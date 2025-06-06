@@ -3,6 +3,21 @@
 
 let prompts = [];
 
+// Check for temporarily stored text from right-click
+function checkForTempText() {
+  chrome.storage.local.get(['tempSelectedText'], (result) => {
+    if (result.tempSelectedText) {
+      // Auto-fill the form with the selected text
+      document.getElementById('promptText').value = result.tempSelectedText;
+      showAddForm();
+      
+      // Clear the temp storage
+      chrome.storage.local.remove(['tempSelectedText']);
+    }
+  });
+}
+let editingPromptId = null; // Track which prompt we're editing
+
 // When popup opens, load existing prompts
 document.addEventListener('DOMContentLoaded', function() {
   loadPrompts();
@@ -19,13 +34,34 @@ function setupEventListeners() {
 
 // Show the form to add a new prompt
 function showAddForm() {
+  editingPromptId = null; // Reset editing mode
   document.getElementById('promptForm').style.display = 'block';
+  document.getElementById('addPromptBtn').textContent = '+ Add';
+  document.getElementById('savePromptBtn').textContent = 'Save';
+  document.getElementById('promptTitle').focus();
+}
+
+// Show the form to edit an existing prompt
+function showEditForm(id) {
+  const prompt = prompts.find(p => p.id == id);
+  if (!prompt) return;
+  
+  editingPromptId = id;
+  document.getElementById('promptTitle').value = prompt.title;
+  document.getElementById('promptText').value = prompt.text;
+  document.getElementById('promptCategory').value = prompt.category;
+  
+  document.getElementById('promptForm').style.display = 'block';
+  document.getElementById('addPromptBtn').textContent = 'Cancel Edit';
+  document.getElementById('savePromptBtn').textContent = 'Update';
   document.getElementById('promptTitle').focus();
 }
 
 // Hide the add prompt form
 function hideAddForm() {
   document.getElementById('promptForm').style.display = 'none';
+  document.getElementById('addPromptBtn').textContent = '+ Add';
+  editingPromptId = null;
   clearForm();
 }
 
@@ -36,7 +72,7 @@ function clearForm() {
   document.getElementById('promptCategory').value = 'General';
 }
 
-// Save a new prompt
+// Save a new prompt or update existing one
 function savePrompt() {
   const title = document.getElementById('promptTitle').value.trim();
   const text = document.getElementById('promptText').value.trim();
@@ -48,17 +84,31 @@ function savePrompt() {
     return;
   }
   
-  // Create new prompt object
-  const newPrompt = {
-    id: Date.now(), // Simple way to create unique ID
-    title: title,
-    text: text,
-    category: category,
-    createdAt: new Date().toISOString()
-  };
+  if (editingPromptId) {
+    // Update existing prompt
+    const promptIndex = prompts.findIndex(p => p.id == editingPromptId);
+    if (promptIndex !== -1) {
+      prompts[promptIndex] = {
+        ...prompts[promptIndex],
+        title: title,
+        text: text,
+        category: category,
+        updatedAt: new Date().toISOString()
+      };
+    }
+  } else {
+    // Create new prompt
+    const newPrompt = {
+      id: Date.now(), // Simple way to create unique ID
+      title: title,
+      text: text,
+      category: category,
+      createdAt: new Date().toISOString()
+    };
+    prompts.push(newPrompt);
+  }
   
-  // Add to our list and save to Chrome storage
-  prompts.push(newPrompt);
+  // Save and refresh display
   saveToStorage();
   displayPrompts();
   hideAddForm();
@@ -66,11 +116,14 @@ function savePrompt() {
 
 // Load prompts from Chrome's storage
 function loadPrompts() {
-  chrome.storage.local.get(['prompts'], function(result) {
-    prompts = result.prompts || [];
-    displayPrompts();
-  });
-}
+    chrome.storage.local.get(['prompts'], function(result) {
+      prompts = result.prompts || [];
+      displayPrompts();
+      
+      // Also check for temp text from right-click
+      checkForTempText();
+    });
+  }
 
 // Save prompts to Chrome's storage
 function saveToStorage() {
@@ -79,44 +132,72 @@ function saveToStorage() {
 
 // Show all prompts in the list
 function displayPrompts(filteredPrompts = null) {
-  const listToShow = filteredPrompts || prompts;
-  const container = document.getElementById('promptList');
-  
-  if (listToShow.length === 0) {
-    container.innerHTML = '<div class="no-prompts">No prompts found</div>';
-    return;
-  }
-  
-  // Create HTML for each prompt
-  container.innerHTML = listToShow.map(prompt => `
-    <div class="prompt-item">
-      <div class="prompt-title">${escapeHtml(prompt.title)}</div>
-      <div class="prompt-category">${prompt.category}</div>
-      <div class="prompt-text">${escapeHtml(prompt.text)}</div>
-      <div class="prompt-actions">
-        <button class="copy-btn" onclick="copyPrompt('${prompt.id}')">Copy</button>
-        <button class="delete-btn" onclick="deletePrompt('${prompt.id}')">Delete</button>
-      </div>
-    </div>
-  `).join('');
-}
-
-// Copy prompt text to clipboard
-function copyPrompt(id) {
-  const prompt = prompts.find(p => p.id == id);
-  if (prompt) {
-    navigator.clipboard.writeText(prompt.text).then(() => {
-      // Visual feedback that copy worked
-      const btn = event.target;
-      const originalText = btn.textContent;
-      btn.textContent = 'Copied!';
-      btn.style.background = '#4CAF50';
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.style.background = '#2196F3';
-      }, 1000);
+    const listToShow = filteredPrompts || prompts;
+    const container = document.getElementById('promptList');
+    
+    if (listToShow.length === 0) {
+      container.innerHTML = '<div class="no-prompts">No prompts found</div>';
+      return;
+    }
+    
+    // Clear container first
+    container.innerHTML = '';
+    
+    // Create each prompt item
+    listToShow.forEach(prompt => {
+      const promptDiv = document.createElement('div');
+      promptDiv.className = 'prompt-item';
+      promptDiv.innerHTML = `
+        <div class="prompt-title">${escapeHtml(prompt.title)}</div>
+        <div class="prompt-category">${prompt.category}</div>
+        <div class="prompt-text">${escapeHtml(prompt.text)}</div>
+        <div class="prompt-actions">
+          <button class="copy-btn" data-id="${prompt.id}" data-action="copy">Copy</button>
+          <button class="edit-btn" data-id="${prompt.id}" data-action="edit">Edit</button>
+          <button class="delete-btn" data-id="${prompt.id}" data-action="delete">Delete</button>
+        </div>
+      `;
+      
+      container.appendChild(promptDiv);
+    });
+    
+    // Add event listeners to all buttons
+    container.addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') {
+        const id = e.target.getAttribute('data-id');
+        const action = e.target.getAttribute('data-action');
+        
+        if (action === 'copy') {
+          copyPrompt(id, e.target);
+        } else if (action === 'edit') {
+          editPrompt(id);
+        } else if (action === 'delete') {
+          deletePrompt(id);
+        }
+      }
     });
   }
+
+// Copy prompt text to clipboard
+function copyPrompt(id, buttonElement) {
+    const prompt = prompts.find(p => p.id == id);
+    if (prompt) {
+      navigator.clipboard.writeText(prompt.text).then(() => {
+        // Visual feedback that copy worked
+        const originalText = buttonElement.textContent;
+        buttonElement.textContent = 'Copied!';
+        buttonElement.style.background = '#4CAF50';
+        setTimeout(() => {
+          buttonElement.textContent = originalText;
+          buttonElement.style.background = '#2196F3';
+        }, 1000);
+      });
+    }
+  }
+
+// Edit a prompt
+function editPrompt(id) {
+  showEditForm(id);
 }
 
 // Delete a prompt
@@ -156,4 +237,5 @@ function escapeHtml(text) {
 
 // Make functions available globally so HTML onclick can use them
 window.copyPrompt = copyPrompt;
+window.editPrompt = editPrompt;
 window.deletePrompt = deletePrompt;

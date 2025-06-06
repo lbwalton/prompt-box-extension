@@ -5,18 +5,20 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "showSaveDialog") {
       showQuickSaveDialog(request.text);
+      sendResponse({success: true}); // Send response back
     }
+    return true; // Keep message channel open
   });
   
   // Show a quick save dialog on the webpage
   function showQuickSaveDialog(selectedText) {
-    // Remove any existing dialog
+    // Remove any existing dialog first
     const existingDialog = document.getElementById('promptBoxDialog');
     if (existingDialog) {
       existingDialog.remove();
     }
     
-    // Create dialog HTML
+    // Create the dialog
     const dialog = document.createElement('div');
     dialog.id = 'promptBoxDialog';
     dialog.innerHTML = `
@@ -114,42 +116,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       "></div>
     `;
     
-    // Add dialog to page
+    // Add to page
     document.body.appendChild(dialog);
     
-    // Focus on title input
-    document.getElementById('quickTitle').focus();
+    // Focus title input
+    setTimeout(() => {
+      const titleInput = document.getElementById('quickTitle');
+      if (titleInput) titleInput.focus();
+    }, 100);
     
-    // Handle save button
-    document.getElementById('quickSave').addEventListener('click', () => {
-      const title = document.getElementById('quickTitle').value.trim();
-      const text = document.getElementById('quickText').value.trim();
-      const category = document.getElementById('quickCategory').value;
-      
-      if (!title || !text) {
-        alert('Please fill in both title and prompt text');
-        return;
-      }
-      
-      // Save to Chrome storage
-      savePromptToStorage(title, text, category);
-      dialog.remove();
-    });
-    
-    // Handle cancel button
-    document.getElementById('quickCancel').addEventListener('click', () => {
-      dialog.remove();
-    });
-    
-    // Close dialog when clicking outside
-    dialog.addEventListener('click', (e) => {
-      if (e.target === dialog) {
+    // Save button
+    const saveBtn = document.getElementById('quickSave');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const title = document.getElementById('quickTitle').value.trim();
+        const text = document.getElementById('quickText').value.trim();
+        const category = document.getElementById('quickCategory').value;
+        
+        if (!title || !text) {
+          alert('Please fill in both title and prompt text');
+          return;
+        }
+        
+        savePromptToStorage(title, text, category);
         dialog.remove();
-      }
-    });
+      });
+    }
+    
+    // Cancel button
+    const cancelBtn = document.getElementById('quickCancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        dialog.remove();
+      });
+    }
   }
   
-  // Save prompt to Chrome storage
+  // Save to storage
   function savePromptToStorage(title, text, category) {
     const newPrompt = {
       id: Date.now(),
@@ -159,19 +162,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       createdAt: new Date().toISOString()
     };
     
-    // Get existing prompts and add new one
     chrome.storage.local.get(['prompts'], (result) => {
       const prompts = result.prompts || [];
       prompts.push(newPrompt);
       
       chrome.storage.local.set({ 'prompts': prompts }, () => {
-        // Show success message
         showSuccessMessage();
       });
     });
   }
   
-  // Show success message
+  // Success message
   function showSuccessMessage() {
     const message = document.createElement('div');
     message.innerHTML = 'Prompt saved successfully!';
@@ -189,9 +190,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     `;
     
     document.body.appendChild(message);
-    
-    // Remove message after 3 seconds
-    setTimeout(() => {
-      message.remove();
-    }, 3000);
+    setTimeout(() => message.remove(), 3000);
   }

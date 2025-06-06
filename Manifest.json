@@ -6,14 +6,15 @@
     "permissions": [
       "storage",
       "activeTab",
-      "contextMenus"
+      "contextMenus",
+      "scripting"
     ],
     "background": {
       "service_worker": "background.js"
     },
     "action": {
       "default_popup": "popup.html",
-      "default_title": "Prompt Library"
+      "default_title": "Prompt Box"
     },
     "content_scripts": [
       {

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 400px;
+      padding: 16px;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      color: #333;
+    }
+    
+    .search-box {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      box-sizing: border-box;
+    }
+    
+    .add-prompt-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .add-prompt-btn:hover {
+      background: #45a049;
+    }
+    
+    .prompt-form {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    
+    .form-group {
+      margin-bottom: 10px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+      font-size: 12px;
+    }
+    
+    input, textarea, select {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      box-sizing: border-box;
+      font-size: 12px;
+    }
+    
+    textarea {
+      height: 60px;
+      resize: vertical;
+    }
+    
+    .form-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .save-btn, .cancel-btn {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .save-btn {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .cancel-btn {
+      background: #f44336;
+      color: white;
+    }
+    
+    .prompt-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .prompt-item {
+      border: 1px solid #eee;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: white;
+    }
+    
+    .prompt-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    
+    .prompt-category {
+      font-size: 11px;
+      color: #666;
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+    
+    .prompt-text {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 8px;
+      max-height: 40px;
+      overflow: hidden;
+    }
+    
+    .prompt-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .copy-btn, .delete-btn {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    
+    .copy-btn {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .delete-btn {
+      background: #f44336;
+      color: white;
+    }
+    
+    .no-prompts {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Prompt Box</h1>
+    <button class="add-prompt-btn" id="addPromptBtn">+ Add</button>
+  </div>
+  
+  <div class="prompt-form" id="promptForm">
+    <div class="form-group">
+      <label>Title:</label>
+      <input type="text" id="promptTitle" placeholder="Give your prompt a name">
+    </div>
+    <div class="form-group">
+      <label>Category:</label>
+      <select id="promptCategory">
+        <option value="General">General</option>
+        <option value="Writing">Writing</option>
+        <option value="Coding">Coding</option>
+        <option value="Research">Research</option>
+        <option value="Creative">Creative</option>
+        <option value="Business">Business</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Prompt:</label>
+      <textarea id="promptText" placeholder="Enter your prompt here..."></textarea>
+    </div>
+    <div class="form-buttons">
+      <button class="save-btn" id="savePromptBtn">Save</button>
+      <button class="cancel-btn" id="cancelBtn">Cancel</button>
+    </div>
+  </div>
+  
+  <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
+  
+  <div class="prompt-list" id="promptList">
+    <div class="no-prompts">No prompts saved yet. Click "+ Add" to create your first prompt!</div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

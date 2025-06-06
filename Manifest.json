@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "Prompt Box",
+    "version": "1.0",
+    "description": "Store and organize your AI prompts",
+    "permissions": [
+      "storage",
+      "activeTab",
+      "contextMenus"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "Prompt Library"
+    },
+    "content_scripts": [
+      {
+        "matches": ["<all_urls>"],
+        "js": ["content.js"]
+      }
+    ],
+    "icons": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }

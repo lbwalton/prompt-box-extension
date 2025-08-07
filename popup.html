@@ -199,30 +199,214 @@
       text-decoration: underline;
     }
     
-    .sort-controls {
+    .filter-controls {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      gap: 12px;
       margin-bottom: 12px;
       font-size: 12px;
     }
     
-    .sort-controls label {
-      font-weight: bold;
-      margin: 0;
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
     }
     
-    .sort-controls select {
+    .filter-group label {
+      font-weight: bold;
+      margin: 0;
+      white-space: nowrap;
+    }
+    
+    .filter-group select {
       flex: 1;
       padding: 4px 6px;
       font-size: 11px;
+    }
+    
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .manage-tags-btn {
+      background: #666;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .manage-tags-btn:hover {
+      background: #555;
+    }
+    
+    .tag-management {
+      display: none;
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .tag-item {
+      display: flex;
+      align-items: center;
+      background: #e0e0e0;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+    }
+    
+    .tag-item.default {
+      background: #dcedc8;
+    }
+    
+    .tag-item input[readonly] {
+      background: transparent;
+      color: #666;
+      cursor: default;
+    }
+    
+    .tag-item input[readonly]:focus {
+      outline: none;
+      box-shadow: none;
+    }
+    
+    .tag-item input {
+      background: transparent;
+      border: none;
+      font-size: 11px;
+      width: auto;
+      min-width: 40px;
+      padding: 0;
+      margin-right: 4px;
+    }
+    
+    .tag-delete {
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 4px;
+    }
+    
+    .add-tag-input {
+      width: 120px;
+      padding: 4px 6px;
+      font-size: 11px;
+      margin-right: 8px;
+    }
+    
+    .star-btn {
+      background: transparent;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      color: #ccc;
+      padding: 2px;
+      transition: color 0.2s ease;
+    }
+    
+    .star-btn:hover {
+      color: #ffd700;
+    }
+    
+    .star-btn.starred {
+      color: #ffd700;
+    }
+    
+    .prompt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    
+    .prompt-category.favorite {
+      background: #ffd700;
+      color: #333;
+    }
+    
+    .selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+      min-height: 20px;
+    }
+    
+    .selected-tag {
+      background: #e0e0e0;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .selected-tag.favorite {
+      background: #ffd700;
+      color: #333;
+    }
+    
+    .selected-tag-remove {
+      background: #f44336;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      font-size: 8px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    
+    .prompt-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    
+    .prompt-tag {
+      background: #f0f0f0;
+      color: #666;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 10px;
+    }
+    
+    .prompt-tag.favorite {
+      background: #ffd700;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>Prompt Box</h1>
-    <button class="add-prompt-btn" id="addPromptBtn">+ Add</button>
+    <div class="header-buttons">
+      <button class="add-prompt-btn" id="addPromptBtn">+ Add</button>
+      <button class="manage-tags-btn" id="manageTagsBtn">⚙️</button>
+    </div>
   </div>
   
   <div class="prompt-form" id="promptForm">
@@ -231,8 +415,10 @@
       <input type="text" id="promptTitle" placeholder="Give your prompt a name">
     </div>
     <div class="form-group">
-      <label>Category:</label>
+      <label>Tags:</label>
+      <div class="selected-tags" id="selectedTags"></div>
       <select id="promptCategory">
+        <option value="">Select a tag...</option>
         <option value="General">General</option>
         <option value="Writing">Writing</option>
         <option value="Coding">Coding</option>
@@ -251,20 +437,41 @@
     </div>
   </div>
   
+  <div class="tag-management" id="tagManagement">
+    <h3 style="margin: 0 0 10px 0; font-size: 14px;">Manage Tags</h3>
+    <div class="tag-list" id="tagList"></div>
+    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+      <input type="text" class="add-tag-input" id="addTagInput" placeholder="New tag name">
+      <button class="save-btn" id="addTagBtn" style="padding: 4px 8px; font-size: 11px;">Add</button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="cancel-btn" id="closeTagsBtn" style="flex: 1; padding: 4px; font-size: 11px;">Close</button>
+    </div>
+  </div>
+  
   <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
   
-  <div class="sort-controls">
-    <label for="sortBy">Sort by:</label>
-    <select id="sortBy">
-      <option value="title-asc">Title (A-Z)</option>
-      <option value="title-desc">Title (Z-A)</option>
-      <option value="category-asc">Category (A-Z)</option>
-      <option value="category-desc">Category (Z-A)</option>
-      <option value="date-newest">Date Created (Newest)</option>
-      <option value="date-oldest">Date Created (Oldest)</option>
-      <option value="modified-newest">Last Modified (Newest)</option>
-      <option value="modified-oldest">Last Modified (Oldest)</option>
-    </select>
+  <div class="filter-controls">
+    <div class="filter-group">
+      <label for="tagFilter">Filter by tag:</label>
+      <select id="tagFilter">
+        <option value="">All tags</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label for="sortBy">Sort by:</label>
+      <select id="sortBy">
+        <option value="title-asc">Title (A-Z)</option>
+        <option value="title-desc">Title (Z-A)</option>
+        <option value="category-asc">Category (A-Z)</option>
+        <option value="category-desc">Category (Z-A)</option>
+        <option value="date-newest">Date Created (Newest)</option>
+        <option value="date-oldest">Date Created (Oldest)</option>
+        <option value="modified-newest">Last Modified (Newest)</option>
+        <option value="modified-oldest">Last Modified (Oldest)</option>
+        <option value="favorites">Favorites First</option>
+      </select>
+    </div>
   </div>
   
   <div class="prompt-list" id="promptList">

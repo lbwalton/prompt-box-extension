@@ -1,0 +1,12 @@
+{
+  "name": "prompt-box-extension",
+  "version": "1.0.0",
+  "description": "Store and organize your AI prompts",
+  "scripts": {
+    "build": "node build.js",
+    "zip": "npm run build && cd dist && zip -r ../prompt-box-extension.zip ."
+  },
+  "devDependencies": {
+    "fs-extra": "^11.1.1"
+  }
+}

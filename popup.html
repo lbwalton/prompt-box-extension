@@ -198,6 +198,25 @@
     .footer a:hover {
       text-decoration: underline;
     }
+    
+    .sort-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    
+    .sort-controls label {
+      font-weight: bold;
+      margin: 0;
+    }
+    
+    .sort-controls select {
+      flex: 1;
+      padding: 4px 6px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -233,6 +252,20 @@
   </div>
   
   <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
+  
+  <div class="sort-controls">
+    <label for="sortBy">Sort by:</label>
+    <select id="sortBy">
+      <option value="title-asc">Title (A-Z)</option>
+      <option value="title-desc">Title (Z-A)</option>
+      <option value="category-asc">Category (A-Z)</option>
+      <option value="category-desc">Category (Z-A)</option>
+      <option value="date-newest">Date Created (Newest)</option>
+      <option value="date-oldest">Date Created (Oldest)</option>
+      <option value="modified-newest">Last Modified (Newest)</option>
+      <option value="modified-oldest">Last Modified (Oldest)</option>
+    </select>
+  </div>
   
   <div class="prompt-list" id="promptList">
     <div class="no-prompts">No prompts saved yet. Click "+ Add" to create your first prompt!</div>

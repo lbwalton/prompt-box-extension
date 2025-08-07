@@ -52,12 +52,77 @@ A simple Chrome extension to store, organize, and quickly access your AI prompts
 3. Click the refresh icon on the Prompt Box extension
 4. Test your changes
 
+### Building for Chrome Web Store
+
+When you're ready to submit to the Chrome Web Store, you need to create a clean package that excludes development files.
+
+#### Option 1: Shell Script (Recommended)
+
+```bash
+./build.sh
+```
+
+This will:
+- Create a `dist/` folder with only the necessary files
+- Generate `prompt-box-extension.zip` ready for upload
+- Show you what files are included
+
+#### Option 2: Node.js Build Script
+
+First install dependencies:
+```bash
+npm install
+```
+
+Then build:
+```bash
+npm run build  # Creates clean dist/ folder
+npm run zip    # Creates ZIP file for Chrome Web Store
+```
+
+#### Option 3: Manual Process
+
+If you prefer to do it manually:
+
+1. Create a new folder called `dist/`
+2. Copy only these files to `dist/`:
+   - `Manifest.json`
+   - `background.js`
+   - `popup.html`
+   - `popup.js`
+   - `icon16.png`
+   - `icon48.png`
+   - `icon128.png`
+3. Create a ZIP file from the contents of `dist/`
+
+#### Files Excluded from Chrome Web Store Package
+
+The following development files are automatically excluded (see `.chromeignore`):
+- `README.md` (this file)
+- `PRD.md` (Product Requirements Document)
+- `security.mdc` (Security guidelines)
+- `build.sh` and `build.js` (build scripts)
+- `package.json` (npm configuration)
+- `.git/` (git repository files)
+- Any `.md` files
+- Development tool configurations
+
 ### Submitting to Chrome Web Store
-1. Zip all files together
+1. Run the build script: `./build.sh`
 2. Go to [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole/)
 3. Pay $5 developer fee (one-time)
-4. Upload your extension
-5. Wait for review (1-3 days)
+4. Upload the generated `prompt-box-extension.zip` file
+5. Fill in the store listing details
+6. Wait for review (1-3 days)
+
+## Development Commands Quick Reference
+
+| Command | Description |
+|---------|-------------|
+| `./build.sh` | Build and create ZIP for Chrome Web Store |
+| `npm install` | Install Node.js dependencies |
+| `npm run build` | Create clean dist/ folder |
+| `npm run zip` | Create ZIP file after building |
 
 ## Contributing
 

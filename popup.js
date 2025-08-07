@@ -103,6 +103,9 @@ function savePrompt() {
     selectedTags = ['General'];
   }
   
+  // Check if Favorite tag is selected
+  const hasFavoriteTag = selectedTags.includes('Favorite');
+  
   if (editingPromptId) {
     // Update existing prompt
     const promptIndex = prompts.findIndex(p => p.id == parseInt(editingPromptId));
@@ -113,6 +116,7 @@ function savePrompt() {
         text: text,
         tags: [...selectedTags],
         category: selectedTags[0], // Keep category for backward compatibility
+        isFavorite: hasFavoriteTag, // Set favorite status based on tags
         updatedAt: new Date().toISOString()
       };
     }
@@ -125,14 +129,14 @@ function savePrompt() {
       tags: [...selectedTags],
       category: selectedTags[0], // Keep category for backward compatibility
       createdAt: new Date().toISOString(),
-      isFavorite: false
+      isFavorite: hasFavoriteTag // Set favorite status based on tags
     };
     prompts.push(newPrompt);
   }
   
   // Save and refresh display
   saveToStorage();
-  displayPrompts();
+  filterAndSortPrompts(); // Use filter function to respect active filters
   hideAddForm();
 }
 
@@ -284,7 +288,7 @@ function deletePrompt(id) {
   if (confirm('Are you sure you want to delete this prompt?')) {
     prompts = prompts.filter(p => p.id != parseInt(id));
     saveToStorage();
-    displayPrompts();
+    filterAndSortPrompts(); // Use filter function to respect active filters
   }
 }
 
@@ -429,15 +433,22 @@ function toggleFavorite(id, buttonElement) {
     }
     
     saveToStorage();
-    displayPrompts();
+    filterAndSortPrompts(); // Use filter function instead of displayPrompts to respect active filters
     updateCategoryDropdown();
   }
 }
 
-// Show tag management interface
+// Toggle tag management interface
 function showTagManagement() {
-  document.getElementById('tagManagement').style.display = 'block';
-  displayTagList();
+  const tagManagement = document.getElementById('tagManagement');
+  const isVisible = tagManagement.style.display === 'block';
+  
+  if (isVisible) {
+    tagManagement.style.display = 'none';
+  } else {
+    tagManagement.style.display = 'block';
+    displayTagList();
+  }
 }
 
 // Hide tag management interface
@@ -537,7 +548,7 @@ function updateTag(oldName, newName) {
   saveToStorage();
   displayTagList();
   updateCategoryDropdown();
-  displayPrompts();
+  filterAndSortPrompts(); // Use filter function to respect active filters
 }
 
 // Delete a custom tag
@@ -556,7 +567,7 @@ function deleteTag(tagName) {
     saveToStorage();
     displayTagList();
     updateCategoryDropdown();
-    displayPrompts();
+    filterAndSortPrompts(); // Use filter function to respect active filters
   }
 }
 

@@ -30,6 +30,7 @@ function setupEventListeners() {
   document.getElementById('savePromptBtn').addEventListener('click', savePrompt);
   document.getElementById('cancelBtn').addEventListener('click', hideAddForm);
   document.getElementById('searchBox').addEventListener('input', filterPrompts);
+  document.getElementById('sortBy').addEventListener('change', sortPrompts);
 }
 
 // Show the form to add a new prompt
@@ -116,8 +117,14 @@ function savePrompt() {
 
 // Load prompts from Chrome's storage
 function loadPrompts() {
-    chrome.storage.local.get(['prompts'], function(result) {
+    chrome.storage.local.get(['prompts', 'sortPreference'], function(result) {
       prompts = result.prompts || [];
+      
+      // Restore user's sort preference
+      if (result.sortPreference) {
+        document.getElementById('sortBy').value = result.sortPreference;
+      }
+      
       displayPrompts();
       
       // Also check for temp text from right-click
@@ -132,7 +139,13 @@ function saveToStorage() {
 
 // Show all prompts in the list
 function displayPrompts(filteredPrompts = null) {
-    const listToShow = filteredPrompts || prompts;
+    let listToShow = filteredPrompts || prompts;
+    
+    // Apply sorting if no filtered list is provided
+    if (!filteredPrompts) {
+      listToShow = applySorting(prompts);
+    }
+    
     const container = document.getElementById('promptList');
     
     if (listToShow.length === 0) {
@@ -213,19 +226,87 @@ function deletePrompt(id) {
 function filterPrompts() {
   const searchTerm = document.getElementById('searchBox').value.toLowerCase();
   
-  if (!searchTerm) {
-    displayPrompts();
-    return;
+  let filtered = prompts;
+  
+  if (searchTerm) {
+    // Search in title, text, and category
+    filtered = prompts.filter(prompt => 
+      prompt.title.toLowerCase().includes(searchTerm) ||
+      prompt.text.toLowerCase().includes(searchTerm) ||
+      prompt.category.toLowerCase().includes(searchTerm)
+    );
   }
   
-  // Search in title, text, and category
-  const filtered = prompts.filter(prompt => 
-    prompt.title.toLowerCase().includes(searchTerm) ||
-    prompt.text.toLowerCase().includes(searchTerm) ||
-    prompt.category.toLowerCase().includes(searchTerm)
-  );
+  // Apply current sorting to filtered results
+  const sorted = applySorting(filtered);
+  displayPrompts(sorted);
+}
+
+// Sort prompts based on selected option
+function sortPrompts() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+  const sortBy = document.getElementById('sortBy').value;
   
-  displayPrompts(filtered);
+  // Save user's sort preference
+  chrome.storage.local.set({ 'sortPreference': sortBy });
+  
+  let filtered = prompts;
+  
+  if (searchTerm) {
+    // Apply search filter first
+    filtered = prompts.filter(prompt => 
+      prompt.title.toLowerCase().includes(searchTerm) ||
+      prompt.text.toLowerCase().includes(searchTerm) ||
+      prompt.category.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // Apply sorting to filtered results
+  const sorted = applySorting(filtered);
+  displayPrompts(sorted);
+}
+
+// Apply sorting logic based on current sort selection
+function applySorting(promptsToSort) {
+  const sortBy = document.getElementById('sortBy').value;
+  const sortedPrompts = [...promptsToSort];
+  
+  switch (sortBy) {
+    case 'title-asc':
+      return sortedPrompts.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()));
+    
+    case 'title-desc':
+      return sortedPrompts.sort((a, b) => b.title.toLowerCase().localeCompare(a.title.toLowerCase()));
+    
+    case 'category-asc':
+      return sortedPrompts.sort((a, b) => a.category.toLowerCase().localeCompare(b.category.toLowerCase()));
+    
+    case 'category-desc':
+      return sortedPrompts.sort((a, b) => b.category.toLowerCase().localeCompare(a.category.toLowerCase()));
+    
+    case 'date-newest':
+      return sortedPrompts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    case 'date-oldest':
+      return sortedPrompts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    
+    case 'modified-newest':
+      return sortedPrompts.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.createdAt);
+        const bDate = new Date(b.updatedAt || b.createdAt);
+        return bDate - aDate;
+      });
+    
+    case 'modified-oldest':
+      return sortedPrompts.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.createdAt);
+        const bDate = new Date(b.updatedAt || b.createdAt);
+        return aDate - bDate;
+      });
+    
+    default:
+      return sortedPrompts;
+  }
 }
 
 // Make text safe for HTML (prevents XSS attacks)

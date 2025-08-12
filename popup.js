@@ -1,25 +1,31 @@
-// Simple Chrome Extension Popup Script
-// This handles saving, displaying, and managing prompts
-
+// Global variables to store prompts and manage form state
 let prompts = [];
-let customTags = [];
-const defaultTags = ['General', 'Writing', 'Coding', 'Research', 'Creative', 'Business'];
 
-// Check for temporarily stored text from right-click
-function checkForTempText() {
-  chrome.storage.local.get(['tempSelectedText'], (result) => {
-    if (result.tempSelectedText) {
-      // Auto-fill the form with the selected text
-      document.getElementById('promptText').value = result.tempSelectedText;
-      showAddForm();
-      
-      // Clear the temp storage
-      chrome.storage.local.remove(['tempSelectedText']);
-    }
-  });
-}
+// Default tags that come with the extension
+const defaultTags = [
+  { name: 'General', isDefault: true },
+  { name: 'Writing', isDefault: true },
+  { name: 'Coding', isDefault: true },
+  { name: 'Research', isDefault: true },
+  { name: 'Creative', isDefault: true },
+  { name: 'Business', isDefault: true },
+  { name: 'Favorite', isDefault: true, isFavorite: true }
+];
+
+let availableTags = [...defaultTags]; // Tags available for selection
 let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
+
+// Debug extension context on load
+console.log('=== EXTENSION DEBUGGING ===');
+console.log('Chrome object available:', typeof chrome !== 'undefined');
+if (typeof chrome !== 'undefined') {
+  console.log('Available Chrome APIs:', Object.keys(chrome));
+  console.log('Identity API available:', !!chrome.identity);
+  if (chrome.runtime) {
+    console.log('Extension ID:', chrome.runtime.id);
+  }
+}
 
 // When popup opens, load existing prompts
 document.addEventListener('DOMContentLoaded', function() {
@@ -31,14 +37,141 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
   document.getElementById('addPromptBtn').addEventListener('click', showAddForm);
   document.getElementById('savePromptBtn').addEventListener('click', savePrompt);
-  document.getElementById('cancelBtn').addEventListener('click', hideAddForm);
-  document.getElementById('searchBox').addEventListener('input', filterPrompts);
-  document.getElementById('sortBy').addEventListener('change', sortPrompts);
-  document.getElementById('tagFilter').addEventListener('change', filterAndSortPrompts);
+  document.getElementById('cancelBtn').addEventListener('click', hideForm);
+  document.getElementById('searchBox').addEventListener('input', searchPrompts);
+  document.getElementById('sortBy').addEventListener('change', function() {
+    saveFilterSettings();
+    filterAndSortPrompts();
+  });
+  document.getElementById('tagFilter').addEventListener('change', function() {
+    saveFilterSettings();
+    filterAndSortPrompts();
+  });
   document.getElementById('manageTagsBtn').addEventListener('click', showTagManagement);
   document.getElementById('closeTagsBtn').addEventListener('click', hideTagManagement);
   document.getElementById('addTagBtn').addEventListener('click', addNewTag);
   document.getElementById('promptCategory').addEventListener('change', addTagToPrompt);
+  document.getElementById('exportBtn').addEventListener('click', exportPrompts);
+  document.getElementById('templateBtn').addEventListener('click', downloadTemplate);
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', importPrompts);
+  
+  // Set up event delegation for prompt buttons
+  document.getElementById('promptList').addEventListener('click', handlePromptButtonClick);
+}
+
+// Handle clicks on prompt buttons (copy, edit, delete, favorite)
+function handlePromptButtonClick(event) {
+  const button = event.target;
+  const action = button.getAttribute('data-action');
+  const promptId = button.getAttribute('data-prompt-id');
+  
+  if (!action || !promptId) return;
+  
+  const id = parseInt(promptId);
+  
+  // Add visual feedback
+  addButtonFeedback(button, action);
+  
+  switch(action) {
+    case 'copy':
+      copyPrompt(id);
+      break;
+    case 'edit':
+      editPrompt(id);
+      break;
+    case 'delete':
+      deletePrompt(id);
+      break;
+    case 'toggle-favorite':
+      toggleFavorite(id);
+      break;
+  }
+}
+
+// Add visual feedback to button clicks
+function addButtonFeedback(button, action) {
+  // Add click animation class
+  button.style.transform = 'scale(0.95)';
+  
+  // Create ripple effect
+  const ripple = document.createElement('span');
+  ripple.style.cssText = `
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin-left: -10px;
+    margin-top: -10px;
+  `;
+  
+  button.style.position = 'relative';
+  button.appendChild(ripple);
+  
+  // Remove ripple after animation
+  setTimeout(() => {
+    if (ripple.parentNode) {
+      ripple.parentNode.removeChild(ripple);
+    }
+    button.style.transform = '';
+  }, 600);
+  
+  // Show action feedback
+  if (action === 'copy') {
+    showTemporaryTooltip(button, '✅ Copied!');
+  }
+}
+
+// Show temporary tooltip
+function showTemporaryTooltip(element, message) {
+  const tooltip = document.createElement('div');
+  tooltip.textContent = message;
+  tooltip.style.cssText = `
+    position: fixed;
+    background: #4CAF50;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  `;
+  
+  // Position tooltip relative to the button
+  const rect = element.getBoundingClientRect();
+  tooltip.style.left = (rect.left + rect.width / 2) + 'px';
+  tooltip.style.top = (rect.top - 35) + 'px';
+  tooltip.style.transform = 'translateX(-50%)';
+  
+  document.body.appendChild(tooltip);
+  
+  // Fade in with slide up effect
+  setTimeout(() => {
+    tooltip.style.opacity = '1';
+    tooltip.style.transform = 'translateX(-50%) translateY(-5px)';
+  }, 50);
+  
+  // Remove after delay with fade out
+  setTimeout(() => {
+    tooltip.style.opacity = '0';
+    tooltip.style.transform = 'translateX(-50%) translateY(-10px)';
+    setTimeout(() => {
+      if (tooltip.parentNode) {
+        tooltip.parentNode.removeChild(tooltip);
+      }
+    }, 300);
+  }, 1500);
 }
 
 // Show the form to add a new prompt
@@ -52,39 +185,37 @@ function showAddForm() {
   updateSelectedTagsDisplay();
 }
 
-// Show the form to edit an existing prompt
-function showEditForm(id) {
-  const prompt = prompts.find(p => p.id == parseInt(id));
-  if (!prompt) return;
-  
-  editingPromptId = id;
-  selectedTags = prompt.tags ? [...prompt.tags] : [prompt.category || 'General'];
-  document.getElementById('promptTitle').value = prompt.title;
-  document.getElementById('promptText').value = prompt.text;
-  document.getElementById('promptCategory').value = '';
-  
-  document.getElementById('promptForm').style.display = 'block';
-  document.getElementById('addPromptBtn').textContent = 'Cancel Edit';
-  document.getElementById('savePromptBtn').textContent = 'Update';
-  document.getElementById('promptTitle').focus();
-  updateSelectedTagsDisplay();
-}
-
-// Hide the add prompt form
-function hideAddForm() {
+// Hide the form
+function hideForm() {
   document.getElementById('promptForm').style.display = 'none';
   document.getElementById('addPromptBtn').textContent = '+ Add';
-  editingPromptId = null;
-  clearForm();
-}
-
-// Clear all form fields
-function clearForm() {
   document.getElementById('promptTitle').value = '';
   document.getElementById('promptText').value = '';
-  document.getElementById('promptCategory').value = '';
   selectedTags = [];
+  editingPromptId = null;
   updateSelectedTagsDisplay();
+}
+
+// Load all prompts from Chrome storage
+function loadPrompts() {
+  chrome.storage.local.get(['prompts'], function(result) {
+    prompts = result.prompts || [];
+    displayPrompts();
+    updateTagDropdown();
+    updateTagFilterDropdown();
+    
+    // Load filter settings after everything is ready
+    loadFilterSettings();
+  });
+  
+  // Load custom tags
+  chrome.storage.local.get(['availableTags'], function(result) {
+    if (result.availableTags) {
+      availableTags = result.availableTags;
+    }
+    updateTagDropdown();
+    updateTagList();
+  });
 }
 
 // Save a new prompt or update existing one
@@ -92,350 +223,258 @@ function savePrompt() {
   const title = document.getElementById('promptTitle').value.trim();
   const text = document.getElementById('promptText').value.trim();
   
-  // Check if user filled in the important fields
   if (!title || !text) {
     alert('Please fill in both title and prompt text');
     return;
   }
   
-  // Ensure at least one tag is selected
+  // Check for duplicate titles (excluding the current prompt being edited)
+  const duplicatePrompt = prompts.find(p => 
+    p.title.toLowerCase() === title.toLowerCase() && 
+    p.id !== editingPromptId
+  );
+  
+  if (duplicatePrompt) {
+    const suggestedTitle = generateUniqueTitle(title);
+    const userChoice = confirm(
+      `⚠️ Duplicate Title Detected\n\n` +
+      `A prompt with the title "${title}" already exists.\n\n` +
+      `Click OK to use this unique title instead:\n"${suggestedTitle}"\n\n` +
+      `Click Cancel to go back and choose your own title.`
+    );
+    
+    if (userChoice) {
+      // Use the suggested unique title
+      document.getElementById('promptTitle').value = suggestedTitle;
+      // Continue with the save using the new title
+      savePromptWithTitle(suggestedTitle, text);
+    } else {
+      // Let user go back and edit the title
+      document.getElementById('promptTitle').focus();
+      document.getElementById('promptTitle').select();
+      return;
+    }
+  } else {
+    // Title is unique, proceed normally
+    savePromptWithTitle(title, text);
+  }
+}
+
+// Helper function to actually save the prompt with the given title
+function savePromptWithTitle(title, text) {
+  // Allow prompts to have no tags, but show warning
   if (selectedTags.length === 0) {
-    selectedTags = ['General'];
+    if (!confirm('This prompt has no tags. Are you sure you want to save it without any tags?')) {
+      return;
+    }
+    // If confirmed, proceed with empty tags array
   }
   
-  // Check if Favorite tag is selected
+  // Check if "Favorite" tag is selected to set isFavorite
   const hasFavoriteTag = selectedTags.includes('Favorite');
+  
+  const promptData = {
+    title: title,
+    text: text,
+    tags: selectedTags,
+    isFavorite: hasFavoriteTag,
+    createdAt: editingPromptId ? prompts.find(p => p.id == editingPromptId)?.createdAt || Date.now() : Date.now(),
+    updatedAt: Date.now()
+  };
   
   if (editingPromptId) {
     // Update existing prompt
-    const promptIndex = prompts.findIndex(p => p.id == parseInt(editingPromptId));
-    if (promptIndex !== -1) {
-      prompts[promptIndex] = {
-        ...prompts[promptIndex],
-        title: title,
-        text: text,
-        tags: [...selectedTags],
-        category: selectedTags[0], // Keep category for backward compatibility
-        isFavorite: hasFavoriteTag, // Set favorite status based on tags
-        updatedAt: new Date().toISOString()
-      };
+    const index = prompts.findIndex(p => p.id == editingPromptId);
+    if (index !== -1) {
+      promptData.id = editingPromptId;
+      prompts[index] = promptData;
     }
   } else {
-    // Create new prompt
-    const newPrompt = {
-      id: Date.now(), // Simple way to create unique ID
-      title: title,
-      text: text,
-      tags: [...selectedTags],
-      category: selectedTags[0], // Keep category for backward compatibility
-      createdAt: new Date().toISOString(),
-      isFavorite: hasFavoriteTag // Set favorite status based on tags
-    };
-    prompts.push(newPrompt);
+    // Add new prompt
+    promptData.id = Date.now();
+    prompts.push(promptData);
   }
   
-  // Save and refresh display
-  saveToStorage();
-  filterAndSortPrompts(); // Use filter function to respect active filters
-  hideAddForm();
-}
-
-// Load prompts from Chrome's storage
-function loadPrompts() {
-    chrome.storage.local.get(['prompts', 'sortPreference', 'customTags'], function(result) {
-      prompts = result.prompts || [];
-      customTags = result.customTags || [];
-      
-      // Migrate old prompts to new format
-      prompts = prompts.map(prompt => {
-        // Ensure isFavorite property exists
-        if (prompt.isFavorite === undefined) {
-          prompt.isFavorite = false;
-        }
-        
-        // Initialize tags if they don't exist
-        if (!prompt.tags && prompt.category) {
-          prompt.tags = [prompt.category];
-        } else if (!prompt.tags) {
-          prompt.tags = ['General'];
-          prompt.category = 'General';
-        }
-        
-        return prompt;
-      });
-      
-      // Save migrated data
-      if (result.prompts && result.prompts.length > 0) {
-        saveToStorage();
-      }
-      
-      // Restore user's sort preference
-      if (result.sortPreference) {
-        document.getElementById('sortBy').value = result.sortPreference;
-      }
-      
-      // Update category dropdown with all available tags
-      updateCategoryDropdown();
-      
-      displayPrompts();
-      
-      // Also check for temp text from right-click
-      checkForTempText();
-    });
-  }
-
-// Save prompts to Chrome's storage
-function saveToStorage() {
-  chrome.storage.local.set({ 'prompts': prompts, 'customTags': customTags });
-}
-
-// Show all prompts in the list
-function displayPrompts(filteredPrompts = null) {
-    let listToShow = filteredPrompts || prompts;
-    
-    // Apply sorting if no filtered list is provided
-    if (!filteredPrompts) {
-      listToShow = applySorting(prompts);
-    }
-    
-    const container = document.getElementById('promptList');
-    
-    if (listToShow.length === 0) {
-      container.innerHTML = '<div class="no-prompts">No prompts found</div>';
-      return;
-    }
-    
-    // Clear container first
-    container.innerHTML = '';
-    
-    // Create each prompt item
-    listToShow.forEach(prompt => {
-      const promptDiv = document.createElement('div');
-      promptDiv.className = 'prompt-item';
-      const starSymbol = prompt.isFavorite ? '★' : '☆';
-      const tags = prompt.tags || [prompt.category || 'General'];
-      const tagsHTML = tags.map(tag => 
-        `<span class="prompt-tag ${tag === 'Favorite' ? 'favorite' : ''}">${escapeHtml(tag)}</span>`
-      ).join('');
-      
-      promptDiv.innerHTML = `
-        <div class="prompt-header">
-          <div class="prompt-title">${escapeHtml(prompt.title)}</div>
-          <button class="star-btn ${prompt.isFavorite ? 'starred' : ''}" data-id="${prompt.id}" data-action="star">${starSymbol}</button>
-        </div>
-        <div class="prompt-tags">${tagsHTML}</div>
-        <div class="prompt-text">${escapeHtml(prompt.text)}</div>
-        <div class="prompt-actions">
-          <button class="copy-btn" data-id="${prompt.id}" data-action="copy">Copy</button>
-          <button class="edit-btn" data-id="${prompt.id}" data-action="edit">Edit</button>
-          <button class="delete-btn" data-id="${prompt.id}" data-action="delete">Delete</button>
-        </div>
-      `;
-      
-      container.appendChild(promptDiv);
-    });
-    
-    // Remove existing event listeners and add fresh ones
-    const existingListener = container.getAttribute('data-listener-attached');
-    if (!existingListener) {
-      container.addEventListener('click', handlePromptActions);
-      container.setAttribute('data-listener-attached', 'true');
-    }
-  }
-
-// Handle all prompt action button clicks
-function handlePromptActions(e) {
-  if (e.target.tagName === 'BUTTON') {
-    const id = e.target.getAttribute('data-id');
-    const action = e.target.getAttribute('data-action');
-    
-    if (action === 'copy') {
-      copyPrompt(id, e.target);
-    } else if (action === 'edit') {
-      editPrompt(id);
-    } else if (action === 'delete') {
-      deletePrompt(id);
-    } else if (action === 'star') {
-      toggleFavorite(id, e.target);
-    }
-  }
+  // Save to Chrome storage
+  chrome.storage.local.set({prompts: prompts}, function() {
+    filterAndSortPrompts();
+    hideForm();
+  });
 }
 
 // Copy prompt text to clipboard
-function copyPrompt(id, buttonElement) {
-    const prompt = prompts.find(p => p.id == parseInt(id));
-    if (prompt) {
-      navigator.clipboard.writeText(prompt.text).then(() => {
-        // Visual feedback that copy worked
-        const originalText = buttonElement.textContent;
-        buttonElement.textContent = 'Copied!';
-        buttonElement.style.background = '#4CAF50';
-        setTimeout(() => {
-          buttonElement.textContent = originalText;
-          buttonElement.style.background = '#2196F3';
-        }, 1000);
-      });
-    }
+function copyPrompt(promptId) {
+  const prompt = prompts.find(p => p.id == promptId);
+  if (prompt) {
+    navigator.clipboard.writeText(prompt.text).then(() => {
+      // Could add a visual indicator here
+      console.log('Prompt copied to clipboard');
+    });
   }
+}
 
-// Edit a prompt
-function editPrompt(id) {
-  showEditForm(id);
+// Edit an existing prompt
+function editPrompt(promptId) {
+  const prompt = prompts.find(p => p.id == promptId);
+  if (prompt) {
+    editingPromptId = promptId;
+    selectedTags = prompt.tags || [prompt.category || 'General'];
+    
+    document.getElementById('promptTitle').value = prompt.title;
+    document.getElementById('promptText').value = prompt.text;
+    document.getElementById('addPromptBtn').textContent = 'Cancel';
+    document.getElementById('savePromptBtn').textContent = 'Update';
+    document.getElementById('promptForm').style.display = 'block';
+    
+    updateSelectedTagsDisplay();
+  }
 }
 
 // Delete a prompt
-function deletePrompt(id) {
+function deletePrompt(promptId) {
   if (confirm('Are you sure you want to delete this prompt?')) {
-    prompts = prompts.filter(p => p.id != parseInt(id));
-    saveToStorage();
-    filterAndSortPrompts(); // Use filter function to respect active filters
-  }
-}
-
-// Filter prompts based on search
-function filterPrompts() {
-  filterAndSortPrompts();
-}
-
-// Filter and sort prompts based on both search and tag filter
-function filterAndSortPrompts() {
-  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-  const tagFilter = document.getElementById('tagFilter').value;
-  
-  let filtered = prompts;
-  
-  // Apply tag filter first
-  if (tagFilter) {
-    filtered = prompts.filter(prompt => {
-      const tags = prompt.tags || [prompt.category || 'General'];
-      return tags.includes(tagFilter);
+    prompts = prompts.filter(p => p.id != promptId);
+    chrome.storage.local.set({prompts: prompts}, function() {
+      filterAndSortPrompts();
     });
   }
-  
-  // Apply search filter
-  if (searchTerm) {
-    filtered = filtered.filter(prompt => {
-      const tags = prompt.tags || [prompt.category || 'General'];
-      return prompt.title.toLowerCase().includes(searchTerm) ||
-             prompt.text.toLowerCase().includes(searchTerm) ||
-             tags.some(tag => tag.toLowerCase().includes(searchTerm));
-    });
-  }
-  
-  // Apply current sorting to filtered results
-  const sorted = applySorting(filtered);
-  displayPrompts(sorted);
 }
 
-// Sort prompts based on selected option
-function sortPrompts() {
-  const sortBy = document.getElementById('sortBy').value;
-  
-  // Save user's sort preference
-  chrome.storage.local.set({ 'sortPreference': sortBy });
-  
-  // Use the unified filter and sort function
-  filterAndSortPrompts();
-}
-
-// Apply sorting logic based on current sort selection
-function applySorting(promptsToSort) {
-  const sortBy = document.getElementById('sortBy').value;
-  const sortedPrompts = [...promptsToSort];
-  
-  switch (sortBy) {
-    case 'title-asc':
-      return sortedPrompts.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()));
+// Toggle favorite status
+function toggleFavorite(promptId) {
+  const prompt = prompts.find(p => p.id == promptId);
+  if (prompt) {
+    prompt.isFavorite = !prompt.isFavorite;
     
-    case 'title-desc':
-      return sortedPrompts.sort((a, b) => b.title.toLowerCase().localeCompare(a.title.toLowerCase()));
-    
-    case 'category-asc':
-      return sortedPrompts.sort((a, b) => a.category.toLowerCase().localeCompare(b.category.toLowerCase()));
-    
-    case 'category-desc':
-      return sortedPrompts.sort((a, b) => b.category.toLowerCase().localeCompare(a.category.toLowerCase()));
-    
-    case 'date-newest':
-      return sortedPrompts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
-    case 'date-oldest':
-      return sortedPrompts.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-    
-    case 'modified-newest':
-      return sortedPrompts.sort((a, b) => {
-        const aDate = new Date(a.updatedAt || a.createdAt);
-        const bDate = new Date(b.updatedAt || b.createdAt);
-        return bDate - aDate;
-      });
-    
-    case 'modified-oldest':
-      return sortedPrompts.sort((a, b) => {
-        const aDate = new Date(a.updatedAt || a.createdAt);
-        const bDate = new Date(b.updatedAt || b.createdAt);
-        return aDate - bDate;
-      });
-    
-    case 'favorites':
-      return sortedPrompts.sort((a, b) => {
-        if (a.isFavorite && !b.isFavorite) return -1;
-        if (!a.isFavorite && b.isFavorite) return 1;
-        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
-      });
-    
-    default:
-      return sortedPrompts;
-  }
-}
-
-// Make text safe for HTML (prevents XSS attacks)
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-// Toggle favorite status of a prompt
-function toggleFavorite(id, buttonElement) {
-  const promptIndex = prompts.findIndex(p => p.id == parseInt(id));
-  if (promptIndex !== -1) {
-    const wasStarred = prompts[promptIndex].isFavorite;
-    prompts[promptIndex].isFavorite = !prompts[promptIndex].isFavorite;
-    
-    
-    // Initialize tags if they don't exist
-    if (!prompts[promptIndex].tags) {
-      prompts[promptIndex].tags = [prompts[promptIndex].category || 'General'];
-    }
-    
-    if (prompts[promptIndex].isFavorite) {
-      // Starring the prompt - add Favorite tag if not present
-      if (!prompts[promptIndex].tags.includes('Favorite')) {
-        prompts[promptIndex].tags.push('Favorite');
-      }
-      prompts[promptIndex].category = 'Favorite'; // Update primary category for backward compatibility
-      
-      // Ensure Favorite is in available tags
-      if (!getAllTags().includes('Favorite')) {
-        customTags.push('Favorite');
+    // Update tags array to include/exclude Favorite tag
+    if (prompt.isFavorite) {
+      if (!prompt.tags.includes('Favorite')) {
+        prompt.tags = [...(prompt.tags || []), 'Favorite'];
       }
     } else {
-      // Unstarring the prompt - remove Favorite tag
-      prompts[promptIndex].tags = prompts[promptIndex].tags.filter(tag => tag !== 'Favorite');
-      
-      // If no tags left, add General
-      if (prompts[promptIndex].tags.length === 0) {
-        prompts[promptIndex].tags = ['General'];
-      }
-      
-      // Update primary category for backward compatibility
-      prompts[promptIndex].category = prompts[promptIndex].tags[0];
+      prompt.tags = (prompt.tags || []).filter(tag => tag !== 'Favorite');
     }
     
-    saveToStorage();
-    filterAndSortPrompts(); // Use filter function instead of displayPrompts to respect active filters
-    updateCategoryDropdown();
+    prompt.updatedAt = Date.now();
+    
+    // Save to storage
+    chrome.storage.local.set({prompts: prompts}, function() {
+      filterAndSortPrompts();
+    });
   }
+}
+
+// Search prompts by title or content
+function searchPrompts() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+  const filteredPrompts = prompts.filter(prompt => 
+    prompt.title.toLowerCase().includes(searchTerm) ||
+    prompt.text.toLowerCase().includes(searchTerm) ||
+    (prompt.tags && prompt.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+  );
+  
+  displayFilteredPrompts(filteredPrompts);
+}
+
+// Display filtered and sorted prompts
+function filterAndSortPrompts() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+  const selectedTag = document.getElementById('tagFilter').value;
+  const sortBy = document.getElementById('sortBy').value;
+  
+  let filteredPrompts = prompts.filter(prompt => {
+    // Filter by search term
+    const matchesSearch = !searchTerm || 
+      prompt.title.toLowerCase().includes(searchTerm) ||
+      prompt.text.toLowerCase().includes(searchTerm) ||
+      (prompt.tags && prompt.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
+    
+    // Filter by tag
+    const matchesTag = !selectedTag || 
+      (prompt.tags && prompt.tags.includes(selectedTag)) ||
+      (selectedTag === 'Favorite' && prompt.isFavorite) ||
+      (selectedTag === prompt.category); // Legacy category support
+    
+    return matchesSearch && matchesTag;
+  });
+  
+  // Sort prompts
+  filteredPrompts.sort((a, b) => {
+    switch(sortBy) {
+      case 'title-asc':
+        return a.title.localeCompare(b.title);
+      case 'title-desc':
+        return b.title.localeCompare(a.title);
+      case 'category-asc':
+        const aTag = (a.tags && a.tags.length > 0 && a.tags[0]) || a.category || '';
+        const bTag = (b.tags && b.tags.length > 0 && b.tags[0]) || b.category || '';
+        return aTag.localeCompare(bTag);
+      case 'category-desc':
+        const aTagDesc = (a.tags && a.tags.length > 0 && a.tags[0]) || a.category || '';
+        const bTagDesc = (b.tags && b.tags.length > 0 && b.tags[0]) || b.category || '';
+        return bTagDesc.localeCompare(aTagDesc);
+      case 'date-newest':
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      case 'date-oldest':
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      case 'modified-newest':
+        return (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+      case 'modified-oldest':
+        return (a.updatedAt || a.createdAt || 0) - (b.updatedAt || b.createdAt || 0);
+      case 'favorites':
+        if (a.isFavorite && !b.isFavorite) return -1;
+        if (!a.isFavorite && b.isFavorite) return 1;
+        return a.title.localeCompare(b.title);
+      default:
+        return 0;
+    }
+  });
+  
+  displayFilteredPrompts(filteredPrompts);
+}
+
+// Display filtered prompts (used by search and sort functions)
+function displayFilteredPrompts(filteredPrompts) {
+  const promptList = document.getElementById('promptList');
+  
+  if (filteredPrompts.length === 0) {
+    promptList.innerHTML = '<div class="no-prompts">No prompts found matching your search.</div>';
+    return;
+  }
+  
+  promptList.innerHTML = filteredPrompts.map(prompt => createPromptHTML(prompt)).join('');
+}
+
+// Display all prompts in the list
+function displayPrompts() {
+  filterAndSortPrompts();
+}
+
+// Create HTML for a single prompt
+function createPromptHTML(prompt) {
+  const tags = prompt.tags || [];
+  const tagsHTML = tags.length > 0 ? tags.map(tag => 
+    `<span class="prompt-tag ${tag === 'Favorite' ? 'favorite' : ''}">${tag}</span>`
+  ).join('') : '<span class="prompt-tag" style="color: #999; font-style: italic;">No tags</span>';
+  
+  const starIcon = prompt.isFavorite ? '★' : '☆';
+  const starClass = prompt.isFavorite ? 'starred' : '';
+  
+  return `
+    <div class="prompt-item">
+      <div class="prompt-header">
+        <div class="prompt-title">${prompt.title}</div>
+        <button class="star-btn ${starClass}" data-action="toggle-favorite" data-prompt-id="${prompt.id}">${starIcon}</button>
+      </div>
+      <div class="prompt-tags">${tagsHTML}</div>
+      <div class="prompt-text">${prompt.text}</div>
+      <div class="prompt-actions">
+        <button class="copy-btn" data-action="copy" data-prompt-id="${prompt.id}">Copy</button>
+        <button class="edit-btn copy-btn" data-action="edit" data-prompt-id="${prompt.id}">Edit</button>
+        <button class="delete-btn" data-action="delete" data-prompt-id="${prompt.id}">Delete</button>
+      </div>
+    </div>
+  `;
 }
 
 // Toggle tag management interface
@@ -444,10 +483,10 @@ function showTagManagement() {
   const isVisible = tagManagement.style.display === 'block';
   
   if (isVisible) {
-    tagManagement.style.display = 'none';
+    hideTagManagement();
   } else {
     tagManagement.style.display = 'block';
-    displayTagList();
+    updateTagList();
   }
 }
 
@@ -456,47 +495,35 @@ function hideTagManagement() {
   document.getElementById('tagManagement').style.display = 'none';
 }
 
-// Display all available tags in management interface
-function displayTagList() {
+// Update the tag list in management interface
+function updateTagList() {
   const tagList = document.getElementById('tagList');
-  const allTags = getAllTags();
-  
-  tagList.innerHTML = '';
-  
-  allTags.forEach(tag => {
-    const isDefault = defaultTags.includes(tag);
-    const isFavorite = tag === 'Favorite';
-    const canEdit = !isDefault && !isFavorite;
-    const canDelete = !isDefault && !isFavorite;
-    
-    const tagDiv = document.createElement('div');
-    tagDiv.className = `tag-item ${isDefault ? 'default' : ''}`;
-    
-    tagDiv.innerHTML = `
-      <input type="text" value="${escapeHtml(tag)}" ${canEdit ? '' : 'readonly'} data-original="${escapeHtml(tag)}">
-      ${canDelete ? '<button class="tag-delete" data-tag="' + escapeHtml(tag) + '">&times;</button>' : ''}
+  tagList.innerHTML = availableTags.map(tag => {
+    const canEdit = !tag.isDefault && !tag.isFavorite;
+    const readonlyAttr = canEdit ? '' : 'readonly';
+    return `
+      <div class="tag-item ${tag.isDefault ? 'default' : ''}">
+        <input type="text" value="${tag.name}" ${readonlyAttr} 
+               data-original-name="${tag.name}">
+        ${canEdit ? `<button class="tag-delete" data-tag="${tag.name}">×</button>` : ''}
+      </div>
     `;
-    
-    // Add event listener for tag editing
-    const input = tagDiv.querySelector('input');
-    if (canEdit) {
-      input.addEventListener('blur', (e) => updateTag(e.target.dataset.original, e.target.value.trim()));
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.target.blur();
-        }
-      });
-    }
-    
-    // Add event listener for tag deletion
-    const deleteBtn = tagDiv.querySelector('.tag-delete');
-    if (deleteBtn) {
-      deleteBtn.addEventListener('click', (e) => {
-        deleteTag(e.target.dataset.tag);
-      });
-    }
-    
-    tagList.appendChild(tagDiv);
+  }).join('');
+  
+  // Add event listeners for delete buttons
+  tagList.querySelectorAll('.tag-delete').forEach(btn => {
+    btn.addEventListener('click', function() {
+      deleteTag(this.getAttribute('data-tag'));
+    });
+  });
+  
+  // Add event listeners for input changes
+  tagList.querySelectorAll('input[type="text"]').forEach(input => {
+    input.addEventListener('change', function() {
+      const oldName = this.getAttribute('data-original-name');
+      const newName = this.value;
+      updateTagName(oldName, newName);
+    });
   });
 }
 
@@ -505,83 +532,90 @@ function addNewTag() {
   const input = document.getElementById('addTagInput');
   const tagName = input.value.trim();
   
-  if (!tagName) {
-    alert('Please enter a tag name');
-    return;
-  }
+  if (!tagName) return;
   
-  if (getAllTags().includes(tagName)) {
+  if (availableTags.some(tag => tag.name.toLowerCase() === tagName.toLowerCase())) {
     alert('Tag already exists');
     return;
   }
   
-  customTags.push(tagName);
-  input.value = '';
-  saveToStorage();
-  displayTagList();
-  updateCategoryDropdown();
-}
-
-// Update an existing tag
-function updateTag(oldName, newName) {
-  if (!newName || newName === oldName) return;
-  
-  if (getAllTags().includes(newName) && newName !== oldName) {
-    alert('Tag already exists');
-    displayTagList();
-    return;
-  }
-  
-  // Update in custom tags
-  const tagIndex = customTags.indexOf(oldName);
-  if (tagIndex !== -1) {
-    customTags[tagIndex] = newName;
-  }
-  
-  // Update all prompts that use this tag
-  prompts.forEach(prompt => {
-    if (prompt.category === oldName) {
-      prompt.category = newName;
-    }
+  availableTags.push({ name: tagName, isDefault: false });
+  chrome.storage.local.set({availableTags: availableTags}, function() {
+    updateTagList();
+    updateTagDropdown();
+    input.value = '';
   });
-  
-  saveToStorage();
-  displayTagList();
-  updateCategoryDropdown();
-  filterAndSortPrompts(); // Use filter function to respect active filters
 }
 
-// Delete a custom tag
+// Delete a tag
 function deleteTag(tagName) {
-  if (confirm(`Delete tag "${tagName}"? Prompts using this tag will be changed to "General".`)) {
-    // Remove from custom tags
-    customTags = customTags.filter(tag => tag !== tagName);
+  if (confirm(`Delete tag "${tagName}"? This will remove it from all prompts.`)) {
+    // Remove from available tags
+    availableTags = availableTags.filter(tag => tag.name !== tagName);
     
-    // Update prompts using this tag to "General"
+    // Remove from all prompts
     prompts.forEach(prompt => {
-      if (prompt.category === tagName) {
-        prompt.category = 'General';
+      if (prompt.tags) {
+        prompt.tags = prompt.tags.filter(tag => tag !== tagName);
       }
     });
     
-    saveToStorage();
-    displayTagList();
-    updateCategoryDropdown();
-    filterAndSortPrompts(); // Use filter function to respect active filters
+    // Save changes
+    chrome.storage.local.set({
+      availableTags: availableTags,
+      prompts: prompts
+    }, function() {
+      updateTagList();
+      updateTagDropdown();
+      filterAndSortPrompts();
+    });
   }
 }
 
-
-// Get all available tags (default + custom)
-function getAllTags() {
-  return [...new Set([...defaultTags, ...customTags])];
+// Update tag name
+function updateTagName(oldName, newName) {
+  newName = newName.trim();
+  if (!newName || newName === oldName) return;
+  
+  // Check if new name already exists
+  if (availableTags.some(tag => tag.name.toLowerCase() === newName.toLowerCase() && tag.name !== oldName)) {
+    alert('Tag name already exists');
+    updateTagList(); // Reset the input
+    return;
+  }
+  
+  // Update in available tags
+  const tagIndex = availableTags.findIndex(tag => tag.name === oldName);
+  if (tagIndex !== -1) {
+    availableTags[tagIndex].name = newName;
+  }
+  
+  // Update in all prompts
+  prompts.forEach(prompt => {
+    if (prompt.tags) {
+      const tagIndex = prompt.tags.indexOf(oldName);
+      if (tagIndex !== -1) {
+        prompt.tags[tagIndex] = newName;
+      }
+    }
+  });
+  
+  // Save changes
+  chrome.storage.local.set({
+    availableTags: availableTags,
+    prompts: prompts
+  }, function() {
+    updateTagDropdown();
+    filterAndSortPrompts();
+  });
 }
 
-// Update the category dropdown with all available tags
-function updateCategoryDropdown() {
+// Update the tag dropdown in the form
+function updateTagDropdown() {
   const dropdown = document.getElementById('promptCategory');
   const currentValue = dropdown.value;
-  const allTags = getAllTags();
+  
+  const allTags = availableTags.map(tag => tag.name);
   
   dropdown.innerHTML = '<option value="">Select a tag...</option>';
   
@@ -605,7 +639,7 @@ function updateCategoryDropdown() {
 function updateTagFilterDropdown() {
   const dropdown = document.getElementById('tagFilter');
   const currentValue = dropdown.value;
-  const allTags = getAllTags();
+  const allTags = availableTags.map(tag => tag.name);
   
   dropdown.innerHTML = '<option value="">All tags</option>';
   
@@ -639,39 +673,264 @@ function addTagToPrompt() {
 // Remove tag from current prompt being edited
 function removeTagFromPrompt(tag) {
   selectedTags = selectedTags.filter(t => t !== tag);
-  if (selectedTags.length === 0) {
-    selectedTags = ['General'];
-  }
   updateSelectedTagsDisplay();
 }
 
-// Update the display of selected tags in the form
+// Update display of selected tags in form
 function updateSelectedTagsDisplay() {
   const container = document.getElementById('selectedTags');
-  if (!container) return;
   
-  container.innerHTML = '';
+  if (selectedTags.length === 0) {
+    container.innerHTML = '<div style="color: #999; font-size: 11px; padding: 4px;">No tags selected. Add a tag from the dropdown below.</div>';
+    return;
+  }
   
-  selectedTags.forEach(tag => {
-    const tagDiv = document.createElement('div');
-    tagDiv.className = `selected-tag ${tag === 'Favorite' ? 'favorite' : ''}`;
-    tagDiv.innerHTML = `
-      <span>${escapeHtml(tag)}</span>
-      <button class="selected-tag-remove" data-tag="${escapeHtml(tag)}">&times;</button>
-    `;
-    
-    // Add event listener for tag removal
-    const removeBtn = tagDiv.querySelector('.selected-tag-remove');
-    removeBtn.addEventListener('click', (e) => {
-      removeTagFromPrompt(e.target.dataset.tag);
+  container.innerHTML = selectedTags.map(tag => `
+    <div class="selected-tag ${tag === 'Favorite' ? 'favorite' : ''}">
+      ${tag}
+      <button class="selected-tag-remove" data-action="remove-tag" data-tag="${tag}">×</button>
+    </div>
+  `).join('');
+  
+  // Add event listeners for remove buttons
+  container.querySelectorAll('[data-action="remove-tag"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tag = this.getAttribute('data-tag');
+      removeTagFromPrompt(tag);
     });
-    
-    container.appendChild(tagDiv);
   });
 }
 
-// Make functions available globally so HTML onclick can use them
-window.copyPrompt = copyPrompt;
-window.editPrompt = editPrompt;
-window.deletePrompt = deletePrompt;
-window.deleteTag = deleteTag;
+// Export prompts as CSV
+function exportPrompts() {
+  if (prompts.length === 0) {
+    showImportStatus('No prompts to export', 'warning');
+    return;
+  }
+  
+  const csvData = generateCSVData();
+  downloadFile(csvData, `prompt-box-export-${new Date().toISOString().split('T')[0]}.csv`, 'text/csv');
+  showImportStatus(`Exported ${prompts.length} prompts`, 'success');
+}
+
+// Download file helper
+function downloadFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.style.display = 'none';
+  
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Download CSV template file for importing prompts
+function downloadTemplate() {
+  const templateContent = `Title,Tags,Prompt Text,Is Favorite,Created Date,Modified Date
+"Example Writing Prompt","Writing; Creative","Write a compelling story about...",No,1/1/2024,1/1/2024
+"Code Review Checklist","Coding; Business","Please review this code for...",Yes,1/1/2024,1/1/2024
+"Research Assistant","Research; General","Help me research the topic of...",No,1/1/2024,1/1/2024`;
+  
+  downloadFile(templateContent, 'prompt-box-template.csv', 'text/csv');
+  showImportStatus('✅ Template downloaded! Edit and import back.', 'success');
+}
+
+// Import prompts from CSV
+function importPrompts(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const csv = e.target.result;
+      const lines = csv.split('\n');
+      const headers = parseCSVFields(lines[0]);
+      
+      // Validate headers
+      if (!headers.includes('Title') || !headers.includes('Prompt Text')) {
+        showImportStatus('Invalid CSV format. Missing required columns.', 'error');
+        return;
+      }
+      
+      let importedCount = 0;
+      const newTags = new Set();
+      
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const fields = parseCSVFields(line);
+        if (fields.length < headers.length) continue;
+        
+        const promptData = {};
+        headers.forEach((header, index) => {
+          promptData[header] = fields[index] || '';
+        });
+        
+        if (promptData.Title && promptData['Prompt Text']) {
+          // Parse tags
+          const tags = promptData.Tags ? promptData.Tags.split(';').map(t => t.trim()).filter(t => t) : ['General'];
+          tags.forEach(tag => newTags.add(tag));
+          
+          const newPrompt = {
+            id: Date.now() + importedCount,
+            title: promptData.Title,
+            text: promptData['Prompt Text'],
+            tags: tags,
+            isFavorite: promptData['Is Favorite']?.toLowerCase() === 'yes' || tags.includes('Favorite'),
+            createdAt: promptData['Created Date'] ? new Date(promptData['Created Date']).getTime() : Date.now(),
+            updatedAt: promptData['Modified Date'] ? new Date(promptData['Modified Date']).getTime() : Date.now()
+          };
+          
+          prompts.push(newPrompt);
+          importedCount++;
+        }
+      }
+      
+      // Add new tags to available tags
+      newTags.forEach(tagName => {
+        if (!availableTags.some(tag => tag.name === tagName)) {
+          availableTags.push({ name: tagName, isDefault: false });
+        }
+      });
+      
+      // Save to storage
+      chrome.storage.local.set({
+        prompts: prompts,
+        availableTags: availableTags
+      }, function() {
+        filterAndSortPrompts();
+        updateTagDropdown();
+        showImportStatus(`Successfully imported ${importedCount} prompts`, 'success');
+      });
+      
+    } catch (error) {
+      console.error('Import error:', error);
+      showImportStatus('Error importing file', 'error');
+    }
+  };
+  
+  reader.readAsText(file);
+  event.target.value = ''; // Reset file input
+}
+
+// Parse CSV fields properly handling quoted fields
+function parseCSVFields(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  let i = 0;
+  
+  while (i < line.length) {
+    const char = line[i];
+    
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        // Escaped quote
+        current += '"';
+        i += 2;
+      } else {
+        // Toggle quote state
+        inQuotes = !inQuotes;
+        i++;
+      }
+    } else if (char === ',' && !inQuotes) {
+      fields.push(current.trim());
+      current = '';
+      i++;
+    } else {
+      current += char;
+      i++;
+    }
+  }
+  
+  fields.push(current.trim());
+  return fields;
+}
+
+// Generate CSV data
+function generateCSVData() {
+  const csvHeaders = 'Title,Tags,Prompt Text,Is Favorite,Created Date,Modified Date\n';
+  const csvRows = prompts.map(prompt => {
+    const tags = (prompt.tags || [prompt.category || 'General']).join('; ');
+    const title = `"${prompt.title.replace(/"/g, '""')}"`;
+    const text = `"${prompt.text.replace(/"/g, '""')}"`;
+    const isFavorite = prompt.isFavorite ? 'Yes' : 'No';
+    const createdDate = prompt.createdAt ? new Date(prompt.createdAt).toLocaleDateString() : '';
+    const modifiedDate = prompt.updatedAt ? new Date(prompt.updatedAt).toLocaleDateString() : '';
+    
+    return `${title},"${tags}",${text},${isFavorite},${createdDate},${modifiedDate}`;
+  }).join('\n');
+  
+  return csvHeaders + csvRows;
+}
+
+// Show import status message
+function showImportStatus(message, type = 'info') {
+  const statusElement = document.getElementById('importStatus');
+  if (!statusElement) return;
+  
+  statusElement.textContent = message;
+  statusElement.style.color = type === 'error' ? '#f44336' : 
+                              type === 'warning' ? '#ff9800' : 
+                              type === 'success' ? '#4caf50' : '#666';
+  
+  // Clear message after 3 seconds
+  setTimeout(() => {
+    statusElement.textContent = '';
+  }, 3000);
+}
+
+// Load filter settings from storage
+function loadFilterSettings() {
+  chrome.storage.local.get(['filterSettings'], function(result) {
+    if (result.filterSettings) {
+      const settings = result.filterSettings;
+      
+      // Restore tag filter selection
+      if (settings.tagFilter) {
+        document.getElementById('tagFilter').value = settings.tagFilter;
+      }
+      
+      // Restore sort selection
+      if (settings.sortBy) {
+        document.getElementById('sortBy').value = settings.sortBy;
+      }
+      
+      // Apply the restored filters and sorting
+      filterAndSortPrompts();
+    }
+  });
+}
+
+// Save filter settings to storage
+function saveFilterSettings() {
+  const settings = {
+    tagFilter: document.getElementById('tagFilter').value,
+    sortBy: document.getElementById('sortBy').value
+  };
+  
+  chrome.storage.local.set({filterSettings: settings});
+}
+
+// Generate a unique title by appending a number
+function generateUniqueTitle(baseTitle) {
+  let counter = 2;
+  let suggestedTitle = `${baseTitle} (${counter})`;
+  
+  // Keep incrementing until we find a unique title
+  while (prompts.some(p => p.title.toLowerCase() === suggestedTitle.toLowerCase() && p.id !== editingPromptId)) {
+    counter++;
+    suggestedTitle = `${baseTitle} (${counter})`;
+  }
+  
+  return suggestedTitle;
+}
+
+// Functions are now handled by event delegation - no global assignments needed

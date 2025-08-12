@@ -33,17 +33,27 @@
     }
     
     .add-prompt-btn {
-      background: #4CAF50;
+      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       color: white;
       border: none;
       padding: 8px 16px;
       border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+      outline: none;
     }
     
     .add-prompt-btn:hover {
-      background: #45a049;
+      background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .add-prompt-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
     
     .prompt-form {
@@ -92,16 +102,43 @@
       border-radius: 3px;
       cursor: pointer;
       font-size: 12px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
     }
     
     .save-btn {
-      background: #4CAF50;
+      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       color: white;
+      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+    }
+    
+    .save-btn:hover {
+      background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
+      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .save-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
     
     .cancel-btn {
-      background: #f44336;
+      background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
       color: white;
+      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+    }
+    
+    .cancel-btn:hover {
+      background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+      box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .cancel-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
     
     .prompt-list {
@@ -146,31 +183,73 @@
       gap: 8px;
     }
     
-    .copy-btn, .delete-btn {
+    .copy-btn, .delete-btn, .edit-btn {
       padding: 4px 8px;
       border: none;
       border-radius: 3px;
       cursor: pointer;
       font-size: 11px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+      outline: none;
+    }
+    
+    .copy-btn:focus, .delete-btn:focus, .edit-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
     }
     
     .copy-btn {
-      background: #2196F3;
+      background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
       color: white;
+      box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+    }
+    
+    .copy-btn:hover {
+      background: linear-gradient(135deg, #1976D2 0%, #1BA5D1 100%);
+      box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .copy-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
     }
     
     .delete-btn {
-      background: #f44336;
+      background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
       color: white;
+      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+    }
+    
+    .delete-btn:hover {
+      background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
+      box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .delete-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
     
     .edit-btn {
-      background: #FF9800;
+      background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
       color: white;
+      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
+      outline: none;
     }
 
     .edit-btn:hover {
-      background: #F57C00;
+      background: linear-gradient(135deg, #F57C00 0%, #FF9800 100%);
+      box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .edit-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
     }
     
     .no-prompts {
@@ -240,6 +319,12 @@
       font-size: 30px;
       line-height: 1;
       border-radius: 4px;
+      outline: none;
+    }
+    
+    .manage-tags-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.3);
     }
     
     .manage-tags-btn:hover {
@@ -307,6 +392,12 @@
       font-size: 10px;
       cursor: pointer;
       margin-left: 4px;
+      outline: none;
+    }
+    
+    .tag-delete:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
     }
     
     .add-tag-input {
@@ -322,16 +413,36 @@
       font-size: 16px;
       cursor: pointer;
       color: #ccc;
-      padding: 2px;
-      transition: color 0.2s ease;
+      padding: 4px;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      position: relative;
+      outline: none;
+    }
+    
+    .star-btn:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
     }
     
     .star-btn:hover {
       color: #ffd700;
+      background: rgba(255, 215, 0, 0.1);
+      transform: scale(1.1);
+    }
+    
+    .star-btn:active {
+      transform: scale(0.95);
     }
     
     .star-btn.starred {
       color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+    }
+    
+    .star-btn.starred:hover {
+      background: rgba(255, 215, 0, 0.15);
+      transform: scale(1.15);
     }
     
     .prompt-header {
@@ -379,6 +490,12 @@
       font-size: 8px;
       cursor: pointer;
       line-height: 1;
+      outline: none;
+    }
+    
+    .selected-tag-remove:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
     }
     
     .prompt-tags {
@@ -399,6 +516,29 @@
     .prompt-tag.favorite {
       background: #ffd700;
       color: #333;
+    }
+    
+    /* Button animations */
+    @keyframes ripple {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    /* Subtle pulse animation for important buttons */
+    .add-prompt-btn {
+      animation: pulse 2s infinite;
+    }
+    
+    .add-prompt-btn:hover {
+      animation: none;
     }
   </style>
 </head>
@@ -440,12 +580,32 @@
   </div>
   
   <div class="tag-management" id="tagManagement">
-    <h3 style="margin: 0 0 10px 0; font-size: 14px;">Manage Tags</h3>
-    <div class="tag-list" id="tagList"></div>
-    <div style="display: flex; align-items: center; margin-bottom: 8px;">
-      <input type="text" class="add-tag-input" id="addTagInput" placeholder="New tag name">
-      <button class="save-btn" id="addTagBtn" style="padding: 4px 8px; font-size: 11px;">Add</button>
+    <h3 style="margin: 0 0 10px 0; font-size: 14px;">Settings</h3>
+    
+    <!-- Tag Management Section -->
+    <div class="settings-section" style="margin-bottom: 16px;">
+      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Manage Tags</h4>
+      <div class="tag-list" id="tagList"></div>
+      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+        <input type="text" class="add-tag-input" id="addTagInput" placeholder="New tag name">
+        <button class="save-btn" id="addTagBtn" style="padding: 4px 8px; font-size: 11px;">Add</button>
+      </div>
     </div>
+    
+    <!-- Import/Export Section -->
+    <div class="settings-section" style="margin-bottom: 16px;">
+      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Import/Export Prompts</h4>
+      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+        <button class="save-btn" id="exportBtn" style="flex: 1; padding: 6px; font-size: 11px;">Export CSV</button>
+        <button class="save-btn" id="templateBtn" style="flex: 1; padding: 6px; font-size: 11px;">Download Template</button>
+      </div>
+      <div style="margin-bottom: 8px;">
+        <input type="file" id="importFile" accept=".csv" style="display: none;">
+        <button class="save-btn" id="importBtn" style="width: 100%; padding: 6px; font-size: 11px;">Import CSV</button>
+      </div>
+      <div id="importStatus" style="font-size: 10px; color: #666; text-align: center; min-height: 14px;"></div>
+    </div>
+    
     <div style="display: flex; gap: 8px;">
       <button class="cancel-btn" id="closeTagsBtn" style="flex: 1; padding: 4px; font-size: 11px;">Close</button>
     </div>
@@ -465,8 +625,8 @@
       <select id="sortBy">
         <option value="title-asc">Title (A-Z)</option>
         <option value="title-desc">Title (Z-A)</option>
-        <option value="category-asc">Category (A-Z)</option>
-        <option value="category-desc">Category (Z-A)</option>
+        <option value="category-asc">Tag (A-Z)</option>
+        <option value="category-desc">Tag (Z-A)</option>
         <option value="date-newest">Date Created (Newest)</option>
         <option value="date-oldest">Date Created (Oldest)</option>
         <option value="modified-newest">Last Modified (Newest)</option>

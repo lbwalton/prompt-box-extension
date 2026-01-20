@@ -28,3 +28,9 @@ node_modules/
 *.zip
 *.crx
 *.pem
+
+# Work-in-progress assets
+*Background Removed*
+
+# Claude local settings
+.claude/

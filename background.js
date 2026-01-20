@@ -1,5 +1,9 @@
 // Background script - Simple version for Chrome Store approval
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === 'update') {
+    chrome.storage.local.set({ 'new_update_available': true });
+  }
+
   chrome.contextMenus.create({
     id: "saveToPromptBox",
     title: "Save to Prompt Box",

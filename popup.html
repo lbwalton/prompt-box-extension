@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8">
   <style>
@@ -9,20 +10,20 @@
       font-family: Arial, sans-serif;
       margin: 0;
     }
-    
+
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
     }
-    
+
     h1 {
       margin: 0;
       font-size: 18px;
       color: #333;
     }
-    
+
     .search-box {
       width: 100%;
       padding: 8px;
@@ -31,7 +32,7 @@
       margin-bottom: 12px;
       box-sizing: border-box;
     }
-    
+
     .add-prompt-btn {
       background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       color: white;
@@ -44,18 +45,18 @@
       box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
       outline: none;
     }
-    
+
     .add-prompt-btn:hover {
       background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
       box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .add-prompt-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
-    
+
     .prompt-form {
       display: none;
       margin-bottom: 16px;
@@ -64,19 +65,21 @@
       border-radius: 4px;
       background: #f9f9f9;
     }
-    
+
     .form-group {
       margin-bottom: 10px;
     }
-    
+
     label {
       display: block;
       margin-bottom: 4px;
       font-weight: bold;
       font-size: 12px;
     }
-    
-    input, textarea, select {
+
+    input,
+    textarea,
+    select {
       width: 100%;
       padding: 6px;
       border: 1px solid #ddd;
@@ -84,18 +87,19 @@
       box-sizing: border-box;
       font-size: 12px;
     }
-    
+
     textarea {
       height: 60px;
       resize: vertical;
     }
-    
+
     .form-buttons {
       display: flex;
       gap: 8px;
     }
-    
-    .save-btn, .cancel-btn {
+
+    .save-btn,
+    .cancel-btn {
       flex: 1;
       padding: 6px;
       border: none;
@@ -106,46 +110,46 @@
       position: relative;
       overflow: hidden;
     }
-    
+
     .save-btn {
       background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
       color: white;
       box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
-    
+
     .save-btn:hover {
       background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
       box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .save-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
-    
+
     .cancel-btn {
       background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
       color: white;
       box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
-    
+
     .cancel-btn:hover {
       background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
       box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .cancel-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
-    
+
     .prompt-list {
       max-height: 300px;
       overflow-y: auto;
     }
-    
+
     .prompt-item {
       border: 1px solid #eee;
       border-radius: 4px;
@@ -153,13 +157,13 @@
       margin-bottom: 8px;
       background: white;
     }
-    
+
     .prompt-title {
       font-weight: bold;
       margin-bottom: 4px;
       color: #333;
     }
-    
+
     .prompt-category {
       font-size: 11px;
       color: #666;
@@ -169,7 +173,7 @@
       display: inline-block;
       margin-bottom: 6px;
     }
-    
+
     .prompt-text {
       font-size: 12px;
       color: #555;
@@ -177,13 +181,15 @@
       max-height: 40px;
       overflow: hidden;
     }
-    
+
     .prompt-actions {
       display: flex;
       gap: 8px;
     }
-    
-    .copy-btn, .delete-btn, .edit-btn {
+
+    .copy-btn,
+    .delete-btn,
+    .edit-btn {
       padding: 4px 8px;
       border: none;
       border-radius: 3px;
@@ -194,46 +200,48 @@
       overflow: hidden;
       outline: none;
     }
-    
-    .copy-btn:focus, .delete-btn:focus, .edit-btn:focus {
+
+    .copy-btn:focus,
+    .delete-btn:focus,
+    .edit-btn:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
     }
-    
+
     .copy-btn {
       background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
       color: white;
       box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
     }
-    
+
     .copy-btn:hover {
       background: linear-gradient(135deg, #1976D2 0%, #1BA5D1 100%);
       box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .copy-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
     }
-    
+
     .delete-btn {
       background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
       color: white;
       box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
-    
+
     .delete-btn:hover {
       background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
       box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .delete-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
     }
-    
+
     .edit-btn {
       background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
       color: white;
@@ -246,19 +254,19 @@
       box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
       transform: translateY(-1px);
     }
-    
+
     .edit-btn:active {
       transform: translateY(0);
       box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
     }
-    
+
     .no-prompts {
       text-align: center;
       color: #666;
       font-style: italic;
       padding: 20px;
     }
-    
+
     .footer {
       text-align: center;
       padding: 12px 0 8px 0;
@@ -267,49 +275,49 @@
       font-size: 11px;
       color: #666;
     }
-    
+
     .footer a {
       color: #4CAF50;
       text-decoration: none;
       font-weight: bold;
     }
-    
+
     .footer a:hover {
       text-decoration: underline;
     }
-    
+
     .filter-controls {
       display: flex;
       gap: 12px;
       margin-bottom: 12px;
       font-size: 12px;
     }
-    
+
     .filter-group {
       display: flex;
       align-items: center;
       gap: 6px;
       flex: 1;
     }
-    
+
     .filter-group label {
       font-weight: bold;
       margin: 0;
       white-space: nowrap;
     }
-    
+
     .filter-group select {
       flex: 1;
       padding: 4px 6px;
       font-size: 11px;
     }
-    
+
     .header-buttons {
       display: flex;
       gap: 8px;
       align-items: center;
     }
-    
+
     .manage-tags-btn {
       background: transparent;
       color: #666;
@@ -321,17 +329,17 @@
       border-radius: 4px;
       outline: none;
     }
-    
+
     .manage-tags-btn:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.3);
     }
-    
+
     .manage-tags-btn:hover {
       background: #f0f0f0;
       color: #333;
     }
-    
+
     .tag-management {
       display: none;
       margin-bottom: 16px;
@@ -340,14 +348,14 @@
       border-radius: 4px;
       background: #e8e8e8;
     }
-    
+
     .tag-list {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
       margin-bottom: 12px;
     }
-    
+
     .tag-item {
       display: flex;
       align-items: center;
@@ -356,22 +364,22 @@
       border-radius: 12px;
       font-size: 11px;
     }
-    
+
     .tag-item.default {
       background: #dcedc8;
     }
-    
+
     .tag-item input[readonly] {
       background: transparent;
       color: #666;
       cursor: default;
     }
-    
+
     .tag-item input[readonly]:focus {
       outline: none;
       box-shadow: none;
     }
-    
+
     .tag-item input {
       background: transparent;
       border: none;
@@ -381,7 +389,7 @@
       padding: 0;
       margin-right: 4px;
     }
-    
+
     .tag-delete {
       background: #f44336;
       color: white;
@@ -394,19 +402,19 @@
       margin-left: 4px;
       outline: none;
     }
-    
+
     .tag-delete:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
     }
-    
+
     .add-tag-input {
       width: 120px;
       padding: 4px 6px;
       font-size: 11px;
       margin-right: 8px;
     }
-    
+
     .star-btn {
       background: transparent;
       border: none;
@@ -419,44 +427,44 @@
       position: relative;
       outline: none;
     }
-    
+
     .star-btn:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
     }
-    
+
     .star-btn:hover {
       color: #ffd700;
       background: rgba(255, 215, 0, 0.1);
       transform: scale(1.1);
     }
-    
+
     .star-btn:active {
       transform: scale(0.95);
     }
-    
+
     .star-btn.starred {
       color: #ffd700;
       text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
     }
-    
+
     .star-btn.starred:hover {
       background: rgba(255, 215, 0, 0.15);
       transform: scale(1.15);
     }
-    
+
     .prompt-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 4px;
     }
-    
+
     .prompt-category.favorite {
       background: #ffd700;
       color: #333;
     }
-    
+
     .selected-tags {
       display: flex;
       flex-wrap: wrap;
@@ -464,7 +472,7 @@
       margin-bottom: 6px;
       min-height: 20px;
     }
-    
+
     .selected-tag {
       background: #e0e0e0;
       padding: 2px 6px;
@@ -474,12 +482,12 @@
       align-items: center;
       gap: 4px;
     }
-    
+
     .selected-tag.favorite {
       background: #ffd700;
       color: #333;
     }
-    
+
     .selected-tag-remove {
       background: #f44336;
       color: white;
@@ -492,19 +500,19 @@
       line-height: 1;
       outline: none;
     }
-    
+
     .selected-tag-remove:focus {
       outline: none;
       box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
     }
-    
+
     .prompt-tags {
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
       margin-bottom: 6px;
     }
-    
+
     .prompt-tag {
       background: #f0f0f0;
       color: #666;
@@ -512,12 +520,12 @@
       border-radius: 8px;
       font-size: 10px;
     }
-    
+
     .prompt-tag.favorite {
       background: #ffd700;
       color: #333;
     }
-    
+
     /* Button animations */
     @keyframes ripple {
       to {
@@ -525,23 +533,32 @@
         opacity: 0;
       }
     }
-    
+
     @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); }
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
     }
-    
+
     /* Subtle pulse animation for important buttons */
     .add-prompt-btn {
       animation: pulse 2s infinite;
     }
-    
+
     .add-prompt-btn:hover {
       animation: none;
     }
   </style>
 </head>
+
 <body>
   <div class="header">
     <h1>Prompt Box</h1>
@@ -550,7 +567,15 @@
       <button class="manage-tags-btn" id="manageTagsBtn">⚙</button>
     </div>
   </div>
-  
+
+  <div id="updateNotification"
+    style="display: none; background: #e3f2fd; padding: 10px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #2196F3; font-size: 12px; color: #0d47a1; cursor: pointer;">
+    <strong>New in V2.0!</strong> We've updated the extension with improvements. <span
+      style="text-decoration: underline;">See what's new.</span>
+    <button id="dismissUpdateBtn"
+      style="float: right; border: none; background: none; cursor: pointer; color: #0d47a1; font-weight: bold; padding: 0 4px;">✕</button>
+  </div>
+
   <div class="prompt-form" id="promptForm">
     <div class="form-group">
       <label>Title:</label>
@@ -578,10 +603,10 @@
       <button class="cancel-btn" id="cancelBtn">Cancel</button>
     </div>
   </div>
-  
+
   <div class="tag-management" id="tagManagement">
     <h3 style="margin: 0 0 10px 0; font-size: 14px;">Settings</h3>
-    
+
     <!-- Tag Management Section -->
     <div class="settings-section" style="margin-bottom: 16px;">
       <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Manage Tags</h4>
@@ -591,13 +616,14 @@
         <button class="save-btn" id="addTagBtn" style="padding: 4px 8px; font-size: 11px;">Add</button>
       </div>
     </div>
-    
+
     <!-- Import/Export Section -->
     <div class="settings-section" style="margin-bottom: 16px;">
       <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Import/Export Prompts</h4>
       <div style="display: flex; gap: 8px; margin-bottom: 8px;">
         <button class="save-btn" id="exportBtn" style="flex: 1; padding: 6px; font-size: 11px;">Export CSV</button>
-        <button class="save-btn" id="templateBtn" style="flex: 1; padding: 6px; font-size: 11px;">Download Template</button>
+        <button class="save-btn" id="templateBtn" style="flex: 1; padding: 6px; font-size: 11px;">Download
+          Template</button>
       </div>
       <div style="margin-bottom: 8px;">
         <input type="file" id="importFile" accept=".csv" style="display: none;">
@@ -605,14 +631,28 @@
       </div>
       <div id="importStatus" style="font-size: 10px; color: #666; text-align: center; min-height: 14px;"></div>
     </div>
-    
+
+    <!-- About Section -->
+    <div class="settings-section" style="margin-bottom: 16px; border-top: 1px solid #ddd; padding-top: 10px;">
+      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">About Prompt Box</h4>
+      <div style="font-size: 11px; color: #666;">
+        <p style="margin: 0 0 8px 0;">Version: <span id="appVersion">2.0.0</span></p>
+        <button id="viewChangelogBtn"
+          style="background: none; border: none; padding: 0; color: #2196F3; text-decoration: underline; cursor: pointer; font-size: 11px;">View
+          Release Notes</button>
+        <div id="changelogPreview"
+          style="display: none; margin-top: 8px; max-height: 150px; overflow-y: auto; background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px;">
+          Loading changes...</div>
+      </div>
+    </div>
+
     <div style="display: flex; gap: 8px;">
       <button class="cancel-btn" id="closeTagsBtn" style="flex: 1; padding: 4px; font-size: 11px;">Close</button>
     </div>
   </div>
-  
+
   <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
-  
+
   <div class="filter-controls">
     <div class="filter-group">
       <label for="tagFilter">Filter by tag:</label>
@@ -635,7 +675,7 @@
       </select>
     </div>
   </div>
-  
+
   <div class="prompt-list" id="promptList">
     <div class="no-prompts">No prompts saved yet. Click "+ Add" to create your first prompt!</div>
   </div>
@@ -644,6 +684,26 @@
     Built with ❤️ by <a href="https://x.com/Lbwalton" target="_blank">LB</a>
   </div>
 
+  <!-- Changelog Modal -->
+  <div id="changelogModal"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div
+      style="background: white; width: 85%; max-height: 80%; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="margin: 0; font-size: 18px; color: #333;">What's New</h2>
+        <button id="closeChangelogModal"
+          style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+      </div>
+      <div id="changelogContent" style="flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.5; color: #444;">
+        Loading updates...
+      </div>
+      <button id="closeChangelogBtnLarge"
+        style="margin-top: 16px; background: #2196F3; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer;">Got
+        it!</button>
+    </div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
+
 </html>

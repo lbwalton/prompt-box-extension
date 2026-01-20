@@ -34,3 +34,7 @@ node_modules/
 
 # Claude local settings
 .claude/
+
+# Internal documentation
+PRD.md
+*.mdc

@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.1.0] - 2026-01-21
+### Security
+- **XSS Protection**: Added HTML escaping for all user-generated content (titles, prompts, tags) to prevent script injection.
+- **Content Security Policy**: Added explicit CSP to block unauthorized scripts from running.
+
 ## [2.0.0] - 2026-01-14
 ### Added
 - **Filter by tag**: Easily find prompts by their category.

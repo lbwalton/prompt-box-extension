@@ -1,13 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Prompt Box",
-  "version": "2.0",
+  "version": "2.1",
   "description": "Store and organize your AI prompts",
   "permissions": [
     "storage",
     "activeTab",
     "contextMenus"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "background": {
     "service_worker": "background.js"
   },

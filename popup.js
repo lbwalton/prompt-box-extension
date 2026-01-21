@@ -1,6 +1,14 @@
 // Global variables to store prompts and manage form state
 let prompts = [];
 
+// Security: Escape HTML to prevent XSS attacks
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // Default tags that come with the extension
 const defaultTags = [
   { name: 'General', isDefault: true },
@@ -535,7 +543,7 @@ function displayPrompts() {
 function createPromptHTML(prompt) {
   const tags = prompt.tags || [];
   const tagsHTML = tags.length > 0 ? tags.map(tag =>
-    `<span class="prompt-tag ${tag === 'Favorite' ? 'favorite' : ''}">${tag}</span>`
+    `<span class="prompt-tag ${tag === 'Favorite' ? 'favorite' : ''}">${escapeHTML(tag)}</span>`
   ).join('') : '<span class="prompt-tag" style="color: #999; font-style: italic;">No tags</span>';
 
   const starIcon = prompt.isFavorite ? '★' : '☆';
@@ -544,11 +552,11 @@ function createPromptHTML(prompt) {
   return `
     <div class="prompt-item">
       <div class="prompt-header">
-        <div class="prompt-title">${prompt.title}</div>
+        <div class="prompt-title">${escapeHTML(prompt.title)}</div>
         <button class="star-btn ${starClass}" data-action="toggle-favorite" data-prompt-id="${prompt.id}">${starIcon}</button>
       </div>
       <div class="prompt-tags">${tagsHTML}</div>
-      <div class="prompt-text">${prompt.text}</div>
+      <div class="prompt-text">${escapeHTML(prompt.text)}</div>
       <div class="prompt-actions">
         <button class="copy-btn" data-action="copy" data-prompt-id="${prompt.id}">Copy</button>
         <button class="edit-btn copy-btn" data-action="edit" data-prompt-id="${prompt.id}">Edit</button>
@@ -584,9 +592,9 @@ function updateTagList() {
     const readonlyAttr = canEdit ? '' : 'readonly';
     return `
       <div class="tag-item ${tag.isDefault ? 'default' : ''}">
-        <input type="text" value="${tag.name}" ${readonlyAttr} 
-               data-original-name="${tag.name}">
-        ${canEdit ? `<button class="tag-delete" data-tag="${tag.name}">×</button>` : ''}
+        <input type="text" value="${escapeHTML(tag.name)}" ${readonlyAttr}
+               data-original-name="${escapeHTML(tag.name)}">
+        ${canEdit ? `<button class="tag-delete" data-tag="${escapeHTML(tag.name)}">×</button>` : ''}
       </div>
     `;
   }).join('');
@@ -768,8 +776,8 @@ function updateSelectedTagsDisplay() {
 
   container.innerHTML = selectedTags.map(tag => `
     <div class="selected-tag ${tag === 'Favorite' ? 'favorite' : ''}">
-      ${tag}
-      <button class="selected-tag-remove" data-action="remove-tag" data-tag="${tag}">×</button>
+      ${escapeHTML(tag)}
+      <button class="selected-tag-remove" data-action="remove-tag" data-tag="${escapeHTML(tag)}">×</button>
     </div>
   `).join('');
 

@@ -1,12 +1,18 @@
 {
   "name": "prompt-box-extension",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "Store and organize your AI prompts",
   "scripts": {
     "build": "node build.js",
-    "zip": "npm run build && cd dist && zip -r ../prompt-box-extension.zip ."
+    "zip": "npm run build && cd dist && zip -r ../prompt-box-extension.zip .",
+    "lint": "eslint *.js",
+    "lint:fix": "eslint *.js --fix",
+    "security": "eslint *.js --config eslint.security.js"
   },
   "devDependencies": {
-    "fs-extra": "^11.1.1"
+    "fs-extra": "^11.1.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-security": "^2.1.0",
+    "eslint-plugin-no-unsanitized": "^4.0.2"
   }
 }

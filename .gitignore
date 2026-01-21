@@ -21,8 +21,9 @@ pids
 # Optional npm cache directory
 .npm
 
-# Node modules (if we add build tools later)
+# Node modules (dependencies - don't upload these)
 node_modules/
+package-lock.json
 
 # Extension packaging
 *.zip

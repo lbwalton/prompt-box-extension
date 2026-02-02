@@ -1,0 +1,6 @@
+# Project Rules
+
+## Documentation
+- ALWAYS update `CHANGELOG.md` when making significant changes (features, fixes, security updates).
+- Include the version number and date in the changelog entry.
+- Follow the "Keep a Changelog" format.

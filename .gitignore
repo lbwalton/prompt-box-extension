@@ -39,3 +39,7 @@ package-lock.json
 # Internal documentation
 PRD.md
 *.mdc
+# AI Artifacts
+walkthrough.md
+implementation_plan.md
+task.md

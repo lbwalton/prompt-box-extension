@@ -307,10 +307,41 @@ function loadPrompts() {
   });
 }
 
+// Security: Sanitize input to prevent CSV injection and limit length
+function sanitizeInput(input, type = 'text') {
+  if (typeof input !== 'string') return '';
+
+  let sanitized = input.trim();
+
+  // Length limits
+  const maxLengths = {
+    'title': 200,
+    'text': 10000,
+    'tag': 50
+  };
+
+  const limit = maxLengths[type] || 10000;
+  if (sanitized.length > limit) {
+    sanitized = sanitized.substring(0, limit);
+  }
+
+  // CSV Injection prevention
+  // If string starts with =, +, -, or @, prepend a single quote
+  const csvDangerous = /^[\=\+\-\@]/;
+  if (csvDangerous.test(sanitized)) {
+    sanitized = "'" + sanitized;
+  }
+
+  return sanitized;
+}
+
 // Save a new prompt or update existing one
 function savePrompt() {
-  const title = document.getElementById('promptTitle').value.trim();
-  const text = document.getElementById('promptText').value.trim();
+  const titleRaw = document.getElementById('promptTitle').value;
+  const textRaw = document.getElementById('promptText').value;
+
+  const title = sanitizeInput(titleRaw, 'title');
+  const text = sanitizeInput(textRaw, 'text');
 
   if (!title || !text) {
     alert('Please fill in both title and prompt text');
@@ -834,6 +865,12 @@ function importPrompts(event) {
   const file = event.target.files[0];
   if (!file) return;
 
+  // Security: Confirm with user before importing external file
+  if (!confirm('⚠️ Security Warning\n\nImporting files from untrusted sources can be dangerous. Only import files you created or trust completely.\n\nDo you want to proceed?')) {
+    event.target.value = ''; // Reset
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
@@ -864,13 +901,13 @@ function importPrompts(event) {
 
         if (promptData.Title && promptData['Prompt Text']) {
           // Parse tags
-          const tags = promptData.Tags ? promptData.Tags.split(';').map(t => t.trim()).filter(t => t) : ['General'];
+          const tags = promptData.Tags ? promptData.Tags.split(';').map(t => sanitizeInput(t.trim(), 'tag')).filter(t => t) : ['General'];
           tags.forEach(tag => newTags.add(tag));
 
           const newPrompt = {
             id: Date.now() + importedCount,
-            title: promptData.Title,
-            text: promptData['Prompt Text'],
+            title: sanitizeInput(promptData.Title, 'title'),
+            text: sanitizeInput(promptData['Prompt Text'], 'text'),
             tags: tags,
             isFavorite: promptData['Is Favorite']?.toLowerCase() === 'yes' || tags.includes('Favorite'),
             createdAt: promptData['Created Date'] ? new Date(promptData['Created Date']).getTime() : Date.now(),

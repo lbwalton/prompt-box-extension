@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.1] - 2026-02-02
+### Security
+- **Secure Import**: added sanitization to prevent CSV injection and XSS from imported files.
+- **Import Warning**: added a confirmation dialog when importing files to warn users of potential risks.
+- **Input Validation**: implemented stricter length limits and sanitization for prompt titles and text.
+
 ## [2.1.0] - 2026-01-21
 ### Security
 - **XSS Protection**: Added HTML escaping for all user-generated content (titles, prompts, tags) to prevent script injection.

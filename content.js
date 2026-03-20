@@ -1,146 +1,163 @@
 // Prompt Box — Text Expansion Content Script
-// Runs on all pages. Watches for typed shortcuts and expands them.
+// Runs on all pages. Watches for typed shortcuts and expands them on Space.
 
 let shortcuts = {}; // { "tlb": "full prompt text", ... }
 
-// Load shortcuts from storage and keep them in sync
+// Load shortcuts from storage on init
 function loadShortcuts() {
   chrome.storage.local.get(['prompts'], function (result) {
-    const prompts = result.prompts || [];
     shortcuts = {};
-    prompts.forEach(prompt => {
-      if (prompt.shortcut && prompt.shortcut.trim()) {
-        shortcuts[prompt.shortcut.trim().toLowerCase()] = prompt.text;
+    (result.prompts || []).forEach(p => {
+      if (p.shortcut && p.shortcut.trim()) {
+        shortcuts[p.shortcut.trim().toLowerCase()] = p.text;
       }
     });
   });
 }
 
-// Re-sync whenever storage changes (e.g. user adds/edits a prompt in the popup)
+// Keep in sync when user edits prompts in the popup
 chrome.storage.onChanged.addListener(function (changes) {
-  if (changes.prompts) {
-    loadShortcuts();
-  }
+  if (changes.prompts) loadShortcuts();
 });
 
 loadShortcuts();
 
-// Trigger key: Space. When user types a shortcut followed by Space,
-// replace the shortcut+space with the prompt text.
-document.addEventListener('keydown', function (e) {
-  if (e.key !== ' ') return;
+// ─── Core listener ───────────────────────────────────────────────────────────
+// Use `input` event (fires AFTER the character lands in the DOM) instead of
+// keydown + preventDefault. This avoids fighting with Gmail/Notion/Slack's own
+// keydown handlers and lets the space appear normally before we act on it.
+document.addEventListener('input', function (e) {
+  // Only act on a single space being typed (not paste, delete, etc.)
+  if (e.data !== ' ') return;
 
   const el = e.target;
-  if (!isEditableField(el)) return;
 
-  // Get current typed text before the cursor
-  const typed = getTextBeforeCursor(el);
-  if (!typed) return;
+  if (isContentEditable(el)) {
+    tryExpandContentEditable();
+  } else if (isTextInput(el)) {
+    tryExpandInput(el);
+  }
+}, false);
 
-  // Extract the last "word" (no spaces) before the space they just pressed
-  const words = typed.split(' ');
-  const lastWord = words[words.length - 1].toLowerCase();
-
-  if (!lastWord || !shortcuts[lastWord]) return;
-
-  // We have a match — prevent the space from being typed
-  e.preventDefault();
-
-  const expansionText = shortcuts[lastWord];
-  replaceShortcut(el, lastWord, expansionText);
-}, true);
-
-// Determine if an element is a text input we should watch
-function isEditableField(el) {
-  if (!el) return false;
+// ─── Field type helpers ───────────────────────────────────────────────────────
+function isTextInput(el) {
+  if (!el || !el.tagName) return false;
   const tag = el.tagName.toLowerCase();
+  if (tag === 'textarea') return true;
   if (tag === 'input') {
     const type = (el.type || 'text').toLowerCase();
-    // Expand in text-like inputs, never in password fields
-    const textTypes = ['text', 'search', 'email', 'url', 'tel'];
-    return textTypes.includes(type);
+    return ['text', 'search', 'email', 'url', 'tel'].includes(type);
   }
-  if (tag === 'textarea') return true;
-  if (el.isContentEditable) return true;
   return false;
 }
 
-// Get text before the cursor position
-function getTextBeforeCursor(el) {
-  if (el.isContentEditable) {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return '';
-    const range = selection.getRangeAt(0);
-    const preRange = range.cloneRange();
-    preRange.selectNodeContents(el);
-    preRange.setEnd(range.startContainer, range.startOffset);
-    return preRange.toString();
-  }
-  // Standard input / textarea
-  return el.value.substring(0, el.selectionStart);
+function isContentEditable(el) {
+  if (!el) return false;
+  // Check the element itself or walk up to find a contenteditable ancestor
+  return el.isContentEditable === true ||
+    (el.closest && !!el.closest('[contenteditable="true"]'));
 }
 
-// Replace the typed shortcut with the full prompt text
-function replaceShortcut(el, shortcut, expansionText) {
-  if (el.isContentEditable) {
-    replaceInContentEditable(shortcut, expansionText);
-    return;
-  }
+// ─── Shortcut matching ────────────────────────────────────────────────────────
+// textBefore is text before cursor including the space just typed.
+// Returns { shortcut, expansion } or null.
+function getShortcutMatch(textBefore) {
+  // Word immediately before the trailing space, preceded by start-of-string or whitespace
+  const match = textBefore.match(/(?:^|[\s\n])(\S+) $/);
+  if (!match) return null;
+  const word = match[1].toLowerCase();
+  const expansion = shortcuts[word];
+  return expansion ? { shortcut: match[1], expansion } : null;
+}
 
-  const start = el.selectionStart;
-  const end = el.selectionEnd;
-  const value = el.value;
+// ─── Standard input / textarea expansion ─────────────────────────────────────
+function tryExpandInput(el) {
+  const cursor = el.selectionStart;
+  if (cursor === null) return;
 
-  // Find the shortcut at the end of the current text (before cursor)
-  const beforeCursor = value.substring(0, start);
-  const shortcutIndex = beforeCursor.lastIndexOf(shortcut);
+  const before = el.value.substring(0, cursor);
+  const result = getShortcutMatch(before);
+  if (!result) return;
 
-  if (shortcutIndex === -1) return;
+  const { shortcut, expansion } = result;
+  const shortcutWithSpace = shortcut + ' ';
+  const replaceStart = cursor - shortcutWithSpace.length;
 
   const newValue =
-    value.substring(0, shortcutIndex) +
-    expansionText +
-    value.substring(end);
+    el.value.substring(0, replaceStart) +
+    expansion +
+    el.value.substring(cursor);
 
-  el.value = newValue;
+  // Use the native prototype setter so React/Vue/Angular detect the change
+  const proto = el.tagName.toLowerCase() === 'textarea'
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+  if (descriptor && descriptor.set) {
+    descriptor.set.call(el, newValue);
+  } else {
+    el.value = newValue;
+  }
 
-  // Place cursor at end of expanded text
-  const newCursorPos = shortcutIndex + expansionText.length;
-  el.setSelectionRange(newCursorPos, newCursorPos);
+  const newCursor = replaceStart + expansion.length;
+  el.setSelectionRange(newCursor, newCursor);
 
-  // Fire input event so React/Vue/Angular frameworks detect the change
+  // Fire events so frameworks pick up the change
   el.dispatchEvent(new Event('input', { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-// Handle contenteditable expansion (Gmail compose, Notion, etc.)
-function replaceInContentEditable(shortcut, expansionText) {
+// ─── Contenteditable expansion (Gmail, Notion, Slack, etc.) ──────────────────
+function tryExpandContentEditable() {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) return;
+  if (!selection || !selection.rangeCount) return;
 
   const range = selection.getRangeAt(0);
-  const node = range.startContainer;
+  if (!range.collapsed) return; // don't act when text is selected
 
-  if (node.nodeType !== Node.TEXT_NODE) return;
+  const container = range.startContainer;
+  let textBefore = '';
+  let startNode, startOffset;
 
-  const text = node.textContent;
-  const offset = range.startOffset;
-  const beforeCursor = text.substring(0, offset);
-  const shortcutIndex = beforeCursor.lastIndexOf(shortcut);
+  if (container.nodeType === Node.TEXT_NODE) {
+    // Normal case — cursor is inside a text node
+    textBefore = container.textContent.substring(0, range.startOffset);
+    startNode = container;
+  } else {
+    // Cursor is at an element boundary — look at the previous child text node
+    const prevChild = container.childNodes[range.startOffset - 1];
+    if (!prevChild || prevChild.nodeType !== Node.TEXT_NODE) return;
+    textBefore = prevChild.textContent;
+    startNode = prevChild;
+  }
 
-  if (shortcutIndex === -1) return;
+  const result = getShortcutMatch(textBefore);
+  if (!result) return;
 
-  // Replace shortcut with expansion text
-  node.textContent =
-    text.substring(0, shortcutIndex) +
-    expansionText +
-    text.substring(offset);
+  const { shortcut, expansion } = result;
+  const shortcutWithSpace = shortcut + ' ';
 
-  // Move cursor to end of expanded text
-  const newOffset = shortcutIndex + expansionText.length;
-  const newRange = document.createRange();
-  newRange.setStart(node, newOffset);
-  newRange.collapse(true);
+  // Calculate where the shortcut+space starts in the text node
+  const nodeTextOffset = startNode === container
+    ? range.startOffset
+    : startNode.textContent.length;
+
+  const deleteFrom = nodeTextOffset - shortcutWithSpace.length;
+  if (deleteFrom < 0) return;
+
+  // Select the shortcut+space range
+  const replaceRange = document.createRange();
+  replaceRange.setStart(startNode, deleteFrom);
+  replaceRange.setEnd(
+    range.startContainer,
+    startNode === container ? range.startOffset : range.startOffset
+  );
+
   selection.removeAllRanges();
-  selection.addRange(newRange);
+  selection.addRange(replaceRange);
+
+  // execCommand('insertText') is the correct API for contenteditable.
+  // It works with Gmail, Notion, Slack, etc. because it fires the same
+  // DOM events as real keyboard input and respects the app's undo stack.
+  document.execCommand('insertText', false, expansion);
 }

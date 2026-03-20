@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.1.0] - 2026-03-19
+### Added
+- **Text Expansion / Shortcuts**: Assign a short keyword to any prompt (e.g. `tlb`, `myemail`). Type it anywhere on the web and press Space to instantly expand it to the full prompt text. Works in standard text inputs, textareas, and rich-text editors like Gmail and Notion.
+
+### Known Limitations
+- **Does not work on `chrome://` pages** — Chrome prevents extensions from running on its own internal pages (Settings, Extensions, etc.) for security reasons. This is a Chrome platform restriction, not something we can change.
+- **Does not work in Google Docs** — Google Docs uses a canvas-based rendering engine rather than standard HTML input elements, so the extension cannot intercept keystrokes there. Google Sheets, Google Slides, and most other web apps work fine.
+- **Does not work in password fields** — Intentional. Extensions cannot and should not read or modify password inputs.
+- **May not work in some browser-based code editors** — Editors like CodeMirror or Monaco (used in VS Code Web) handle their own keyboard events and may not allow text replacement via standard DOM APIs.
+
 ## [3.0.0] - 2026-03-19
 ### Added
 - **Privacy Mode**: Prompt previews are now blurred by default to protect sensitive content like API keys. Click blurred text to peek temporarily.

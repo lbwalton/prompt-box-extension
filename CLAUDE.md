@@ -51,12 +51,16 @@ If `npm run security` reports errors, fix them before staging. Warnings should b
 ## Data Schema (chrome.storage.local)
 
 ```
-prompts: [{ id, title, text, tags[], isFavorite, createdAt, updatedAt }]
+prompts: [{ id, title, text, tags[], shortcut, isFavorite, isSensitive, createdAt, updatedAt }]
 availableTags: [{ name, isDefault, isFavorite }]
 filterSettings: { tagFilter, sortBy }
+theme: 'light' | 'dark' | 'auto'
 new_update_available: boolean
 tempSelectedText: string
 ```
+
+- `shortcut`: optional lowercase string (no spaces), used by content.js for text expansion. Must be unique across all prompts.
+- `isSensitive`: boolean, defaults to `true`. Controls privacy blur on card preview text.
 
 Default tags (read-only): General, Writing, Coding, Research, Creative, Business, Favorite.
 

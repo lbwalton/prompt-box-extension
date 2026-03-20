@@ -876,6 +876,43 @@
     }
 
     /* ========================================
+       Shortcut Badge (on prompt cards)
+       ======================================== */
+    .shortcut-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.03em;
+    }
+
+    .shortcut-badge svg {
+      width: 10px;
+      height: 10px;
+      flex-shrink: 0;
+    }
+
+    /* Shortcut input hint in form */
+    .shortcut-hint {
+      font-size: 11px;
+      color: var(--color-text-faint);
+      margin-top: 3px;
+    }
+
+    .shortcut-error {
+      font-size: 11px;
+      color: var(--color-danger);
+      margin-top: 3px;
+    }
+
+    /* ========================================
        Settings Panel
        ======================================== */
     .tag-management {
@@ -1366,6 +1403,12 @@
       </select>
     </div>
     <div class="form-group">
+      <label>Shortcut <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>
+      <input type="text" id="promptShortcut" placeholder="e.g. tlb, myemail, standup" autocomplete="off" spellcheck="false">
+      <div class="shortcut-hint">Type your shortcut anywhere on the web, then press Space to expand.</div>
+      <div class="shortcut-error" id="shortcutError" style="display:none;"></div>
+    </div>
+    <div class="form-group">
       <label>Prompt</label>
       <textarea id="promptText" placeholder="Enter your prompt here..."></textarea>
     </div>
@@ -1420,7 +1463,7 @@
     <!-- About Panel -->
     <div class="settings-panel" id="panel-about">
       <div class="about-section">
-        <p>Version: <strong id="appVersion">3.0.0</strong></p>
+        <p>Version: <strong id="appVersion">3.1.0</strong></p>
         <button class="about-link" id="viewChangelogBtn">View Release Notes</button>
         <div class="changelog-preview" id="changelogPreview">Loading changes...</div>
       </div>

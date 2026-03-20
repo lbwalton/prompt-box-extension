@@ -320,6 +320,8 @@ function showAddForm() {
   document.getElementById('promptForm').style.display = 'block';
   document.getElementById('addPromptBtn').textContent = '+ Add';
   document.getElementById('savePromptBtn').textContent = 'Save';
+  document.getElementById('promptShortcut').value = '';
+  document.getElementById('shortcutError').style.display = 'none';
   document.getElementById('promptTitle').focus();
   updateSelectedTagsDisplay();
 }
@@ -330,6 +332,8 @@ function hideForm() {
   document.getElementById('addPromptBtn').textContent = '+ Add';
   document.getElementById('promptTitle').value = '';
   document.getElementById('promptText').value = '';
+  document.getElementById('promptShortcut').value = '';
+  document.getElementById('shortcutError').style.display = 'none';
   selectedTags = [];
   editingPromptId = null;
   updateSelectedTagsDisplay();
@@ -437,7 +441,26 @@ function savePromptWithTitle(title, text) {
     if (!confirm('This prompt has no tags. Are you sure you want to save it without any tags?')) {
       return;
     }
-    // If confirmed, proceed with empty tags array
+  }
+
+  // Validate shortcut (optional field)
+  const shortcutRaw = document.getElementById('promptShortcut').value.trim().toLowerCase();
+  const shortcut = sanitizeInput(shortcutRaw, 'tag'); // reuse tag length limit (50 chars)
+
+  if (shortcut) {
+    // No spaces allowed in shortcuts
+    if (/\s/.test(shortcut)) {
+      showShortcutError('Shortcut cannot contain spaces.');
+      return;
+    }
+    // Check for duplicates (excluding current prompt being edited)
+    const duplicate = prompts.find(p =>
+      p.shortcut && p.shortcut.toLowerCase() === shortcut && p.id !== editingPromptId
+    );
+    if (duplicate) {
+      showShortcutError(`"${shortcut}" is already used by "${duplicate.title}".`);
+      return;
+    }
   }
 
   // Check if "Favorite" tag is selected to set isFavorite
@@ -447,6 +470,7 @@ function savePromptWithTitle(title, text) {
     title: title,
     text: text,
     tags: selectedTags,
+    shortcut: shortcut || null,
     isFavorite: hasFavoriteTag,
     createdAt: editingPromptId ? prompts.find(p => p.id == editingPromptId)?.createdAt || Date.now() : Date.now(),
     updatedAt: Date.now()
@@ -492,6 +516,8 @@ function editPrompt(promptId) {
 
     document.getElementById('promptTitle').value = prompt.title;
     document.getElementById('promptText').value = prompt.text;
+    document.getElementById('promptShortcut').value = prompt.shortcut || '';
+    document.getElementById('shortcutError').style.display = 'none';
     document.getElementById('addPromptBtn').textContent = 'Cancel';
     document.getElementById('savePromptBtn').textContent = 'Update';
     document.getElementById('promptForm').style.display = 'block';
@@ -687,6 +713,11 @@ function createPromptHTML(prompt) {
   const starIcon = prompt.isFavorite ? ICONS.starFilled : ICONS.starOutline;
   const starClass = prompt.isFavorite ? 'starred' : '';
 
+  // Shortcut badge
+  const shortcutBadge = prompt.shortcut
+    ? `<span class="shortcut-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"/></svg>${escapeHTML(prompt.shortcut)}</span>`
+    : '';
+
   // Privacy: default to sensitive (true) if not explicitly set to false
   const isSensitive = prompt.isSensitive !== false;
   const sensitiveClass = isSensitive ? 'sensitive' : '';
@@ -701,6 +732,7 @@ function createPromptHTML(prompt) {
       </div>
       <div class="prompt-tags">
         ${tagsHTML}
+        ${shortcutBadge}
         <span class="sensitivity-label ${isSensitive ? 'is-sensitive' : ''}">${isSensitive ? ICONS.eyeClosed : ICONS.eyeOpen} ${visibilityLabel}</span>
       </div>
       <div class="prompt-text ${sensitiveClass}" data-prompt-id="${prompt.id}">
@@ -1117,6 +1149,14 @@ function generateCSVData() {
   }).join('\n');
 
   return csvHeaders + csvRows;
+}
+
+// Show shortcut validation error in the form
+function showShortcutError(message) {
+  const el = document.getElementById('shortcutError');
+  el.textContent = message;
+  el.style.display = 'block';
+  document.getElementById('promptShortcut').focus();
 }
 
 // Show import status message

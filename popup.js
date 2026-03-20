@@ -37,10 +37,34 @@ if (typeof chrome !== 'undefined') {
 
 // When popup opens, load existing prompts
 document.addEventListener('DOMContentLoaded', function () {
+  loadSavedTheme();
   loadPrompts();
   setupEventListeners();
   checkUpdateStatus();
 });
+
+// Theme: load saved preference on startup
+function loadSavedTheme() {
+  chrome.storage.local.get(['theme'], function (result) {
+    if (result.theme && result.theme !== 'auto') {
+      document.documentElement.setAttribute('data-theme', result.theme);
+    }
+  });
+}
+
+// Theme: toggle between light and dark
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+
+  // Detect effective current theme
+  const isDark = current === 'dark' ||
+    (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const next = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  chrome.storage.local.set({ theme: next });
+}
 
 function checkUpdateStatus() {
   chrome.storage.local.get(['new_update_available'], function (result) {
@@ -83,6 +107,7 @@ function fetchChangelog(targetElementId) {
         // Lists
         .replace(/^\- (.*$)/gim, '<li style="margin-left: 20px; margin-bottom: 4px;">$1</li>');
 
+      // eslint-disable-next-line no-unsanitized/property -- source is bundled CHANGELOG.md loaded via chrome.runtime.getURL, not user input
       target.innerHTML = html;
     })
     .catch(err => {
@@ -129,6 +154,7 @@ function setupEventListeners() {
     saveFilterSettings();
     filterAndSortPrompts();
   });
+  document.getElementById('themeToggleBtn').addEventListener('click', toggleTheme);
   document.getElementById('manageTagsBtn').addEventListener('click', showTagManagement);
   document.getElementById('closeTagsBtn').addEventListener('click', hideTagManagement);
   document.getElementById('addTagBtn').addEventListener('click', addNewTag);
@@ -140,18 +166,39 @@ function setupEventListeners() {
 
   document.getElementById('importFile').addEventListener('change', importPrompts);
 
+  // Settings tab switching
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    tab.addEventListener('click', function () {
+      const targetPanel = this.getAttribute('data-tab');
+      // Deactivate all tabs and panels
+      document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+      // Activate clicked tab and its panel
+      this.classList.add('active');
+      document.getElementById('panel-' + targetPanel)?.classList.add('active');
+    });
+  });
+
   // Changelog & About listeners
   document.getElementById('viewChangelogBtn')?.addEventListener('click', toggleChangelogPreview);
   document.getElementById('closeChangelogModal')?.addEventListener('click', hideChangelogModal);
   document.getElementById('closeChangelogBtnLarge')?.addEventListener('click', hideChangelogModal);
 
-  // Set up event delegation for prompt buttons
-  document.getElementById('promptList').addEventListener('click', handlePromptButtonClick);
+  // Privacy shield toggle
+  document.getElementById('privacyShieldBtn').addEventListener('click', togglePrivacyShield);
+
+  // Set up event delegation for prompt buttons + peek-to-reveal
+  const promptList = document.getElementById('promptList');
+  promptList.addEventListener('click', handlePromptButtonClick);
+  promptList.addEventListener('click', handlePeekClick);
 }
 
 // Handle clicks on prompt buttons (copy, edit, delete, favorite)
 function handlePromptButtonClick(event) {
-  const button = event.target;
+  // Use closest() to handle clicks on SVG/path elements inside buttons
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+
   const action = button.getAttribute('data-action');
   const promptId = button.getAttribute('data-prompt-id');
 
@@ -174,6 +221,9 @@ function handlePromptButtonClick(event) {
       break;
     case 'toggle-favorite':
       toggleFavorite(id);
+      break;
+    case 'toggle-visibility':
+      toggleSensitivity(id);
       break;
   }
 }
@@ -223,18 +273,18 @@ function showTemporaryTooltip(element, message) {
   tooltip.textContent = message;
   tooltip.style.cssText = `
     position: fixed;
-    background: #4CAF50;
-    color: white;
+    background: #18181b;
+    color: #fafafa;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 11px;
-    font-weight: bold;
+    font-size: 12px;
+    font-weight: 600;
     z-index: 10000;
     pointer-events: none;
     opacity: 0;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-family: 'Inter', -apple-system, sans-serif;
   `;
 
   // Position tooltip relative to the button
@@ -484,6 +534,45 @@ function toggleFavorite(promptId) {
   }
 }
 
+// Toggle per-card sensitivity (persistent)
+function toggleSensitivity(promptId) {
+  const prompt = prompts.find(p => p.id == promptId);
+  if (prompt) {
+    // Toggle: if currently sensitive (or undefined/true), make not sensitive
+    prompt.isSensitive = prompt.isSensitive === false ? true : false;
+    prompt.updatedAt = Date.now();
+
+    chrome.storage.local.set({ prompts: prompts }, function () {
+      filterAndSortPrompts();
+    });
+  }
+}
+
+// Peek-to-reveal: click blurred text to temporarily show it
+function handlePeekClick(event) {
+  const textEl = event.target.closest('.prompt-text.sensitive');
+  if (!textEl || textEl.classList.contains('revealed')) return;
+  // Don't reveal if privacy shield is active
+  if (document.body.classList.contains('privacy-shield')) return;
+
+  textEl.classList.add('revealed');
+}
+
+// Global privacy shield toggle (session-only)
+function togglePrivacyShield() {
+  const btn = document.getElementById('privacyShieldBtn');
+  const isActive = document.body.classList.toggle('privacy-shield');
+  btn.classList.toggle('active', isActive);
+  btn.title = isActive ? 'Privacy shield ON — all previews hidden' : 'Privacy shield — hide all previews';
+
+  // Remove any temporary reveals when shield is activated
+  if (isActive) {
+    document.querySelectorAll('.prompt-text.revealed').forEach(el => {
+      el.classList.remove('revealed');
+    });
+  }
+}
+
 // Search prompts by title or content
 function searchPrompts() {
   const searchTerm = document.getElementById('searchBox').value.toLowerCase();
@@ -558,10 +647,17 @@ function displayFilteredPrompts(filteredPrompts) {
   const promptList = document.getElementById('promptList');
 
   if (filteredPrompts.length === 0) {
-    promptList.innerHTML = '<div class="no-prompts">No prompts found matching your search.</div>';
+    promptList.innerHTML = `<div class="no-prompts">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <div class="empty-state-title">No matching prompts</div>
+      <div class="empty-state-hint">Try a different search or filter</div>
+    </div>`;
     return;
   }
 
+  // eslint-disable-next-line no-unsanitized/property -- all user content in createPromptHTML is escaped via escapeHTML(); SVG icons are hardcoded constants
   promptList.innerHTML = filteredPrompts.map(prompt => createPromptHTML(prompt)).join('');
 }
 
@@ -570,15 +666,32 @@ function displayPrompts() {
   filterAndSortPrompts();
 }
 
+// SVG icon templates
+const ICONS = {
+  starOutline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  starFilled: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+  eyeOpen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeClosed: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+};
+
 // Create HTML for a single prompt
 function createPromptHTML(prompt) {
   const tags = prompt.tags || [];
   const tagsHTML = tags.length > 0 ? tags.map(tag =>
     `<span class="prompt-tag ${tag === 'Favorite' ? 'favorite' : ''}">${escapeHTML(tag)}</span>`
-  ).join('') : '<span class="prompt-tag" style="color: #999; font-style: italic;">No tags</span>';
+  ).join('') : '<span class="prompt-tag" style="font-style: italic;">No tags</span>';
 
-  const starIcon = prompt.isFavorite ? '★' : '☆';
+  const starIcon = prompt.isFavorite ? ICONS.starFilled : ICONS.starOutline;
   const starClass = prompt.isFavorite ? 'starred' : '';
+
+  // Privacy: default to sensitive (true) if not explicitly set to false
+  const isSensitive = prompt.isSensitive !== false;
+  const sensitiveClass = isSensitive ? 'sensitive' : '';
+  const visibilityIcon = isSensitive ? ICONS.eyeClosed : ICONS.eyeOpen;
+  const visibilityLabel = isSensitive ? 'Hidden' : 'Visible';
 
   return `
     <div class="prompt-item">
@@ -586,12 +699,19 @@ function createPromptHTML(prompt) {
         <div class="prompt-title">${escapeHTML(prompt.title)}</div>
         <button class="star-btn ${starClass}" data-action="toggle-favorite" data-prompt-id="${prompt.id}">${starIcon}</button>
       </div>
-      <div class="prompt-tags">${tagsHTML}</div>
-      <div class="prompt-text">${escapeHTML(prompt.text)}</div>
+      <div class="prompt-tags">
+        ${tagsHTML}
+        <span class="sensitivity-label ${isSensitive ? 'is-sensitive' : ''}">${isSensitive ? ICONS.eyeClosed : ICONS.eyeOpen} ${visibilityLabel}</span>
+      </div>
+      <div class="prompt-text ${sensitiveClass}" data-prompt-id="${prompt.id}">
+        ${escapeHTML(prompt.text)}
+        <span class="peek-hint">Click to peek</span>
+      </div>
       <div class="prompt-actions">
-        <button class="copy-btn" data-action="copy" data-prompt-id="${prompt.id}">Copy</button>
-        <button class="edit-btn copy-btn" data-action="edit" data-prompt-id="${prompt.id}">Edit</button>
-        <button class="delete-btn" data-action="delete" data-prompt-id="${prompt.id}">Delete</button>
+        <button class="action-btn action-copy" data-action="copy" data-prompt-id="${prompt.id}">${ICONS.copy}<span>Copy</span></button>
+        <button class="action-btn action-visibility" data-action="toggle-visibility" data-prompt-id="${prompt.id}">${visibilityIcon}<span>${isSensitive ? 'Show' : 'Hide'}</span></button>
+        <button class="action-btn action-edit" data-action="edit" data-prompt-id="${prompt.id}">${ICONS.edit}<span>Edit</span></button>
+        <button class="action-btn action-delete" data-action="delete" data-prompt-id="${prompt.id}">${ICONS.trash}<span>Delete</span></button>
       </div>
     </div>
   `;
@@ -618,6 +738,7 @@ function hideTagManagement() {
 // Update the tag list in management interface
 function updateTagList() {
   const tagList = document.getElementById('tagList');
+  // eslint-disable-next-line no-unsanitized/property -- tag.name is escaped via escapeHTML() on all interpolated values below
   tagList.innerHTML = availableTags.map(tag => {
     const canEdit = !tag.isDefault && !tag.isFavorite;
     const readonlyAttr = canEdit ? '' : 'readonly';
@@ -801,10 +922,11 @@ function updateSelectedTagsDisplay() {
   const container = document.getElementById('selectedTags');
 
   if (selectedTags.length === 0) {
-    container.innerHTML = '<div style="color: #999; font-size: 11px; padding: 4px;">No tags selected. Add a tag from the dropdown below.</div>';
+    container.innerHTML = '<div style="color: var(--color-text-faint, #a1a1aa); font-size: 12px; padding: 4px;">No tags selected</div>';
     return;
   }
 
+  // eslint-disable-next-line no-unsanitized/property -- tag content escaped via escapeHTML(); class value is a hardcoded ternary ('favorite' or '')
   container.innerHTML = selectedTags.map(tag => `
     <div class="selected-tag ${tag === 'Favorite' ? 'favorite' : ''}">
       ${escapeHTML(tag)}
@@ -1003,9 +1125,9 @@ function showImportStatus(message, type = 'info') {
   if (!statusElement) return;
 
   statusElement.textContent = message;
-  statusElement.style.color = type === 'error' ? '#f44336' :
-    type === 'warning' ? '#ff9800' :
-      type === 'success' ? '#4caf50' : '#666';
+  statusElement.style.color = type === 'error' ? '#dc2626' :
+    type === 'warning' ? '#d97706' :
+      type === 'success' ? '#16a34a' : '#71717a';
 
   // Clear message after 3 seconds
   setTimeout(() => {

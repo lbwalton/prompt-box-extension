@@ -4,13 +4,120 @@
 <head>
   <meta charset="utf-8">
   <style>
+    /* ========================================
+       Design Tokens
+       ======================================== */
+    :root {
+      --color-bg: #ffffff;
+      --color-surface: #f7f7f8;
+      --color-surface-hover: #ededf0;
+      --color-border: #e4e4e7;
+      --color-border-light: #f0f0f2;
+      --color-text-primary: #18181b;
+      --color-text-secondary: #52525b;
+      --color-text-muted: #71717a;
+      --color-text-faint: #a1a1aa;
+      --color-accent: #16a34a;
+      --color-accent-hover: #15803d;
+      --color-accent-light: rgba(22, 163, 74, 0.1);
+      --color-danger: #dc2626;
+      --color-danger-hover: #b91c1c;
+      --color-danger-light: rgba(220, 38, 38, 0.08);
+      --color-info: #2563eb;
+      --color-info-light: rgba(37, 99, 235, 0.08);
+      --color-warning: #d97706;
+      --color-gold: #eab308;
+      --color-gold-light: rgba(234, 179, 8, 0.15);
+      --color-focus-ring: rgba(22, 163, 74, 0.4);
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ========================================
+       Dark Mode — auto (system) + manual toggle
+       ======================================== */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) {
+        --color-bg: #18181b;
+        --color-surface: #27272a;
+        --color-surface-hover: #3f3f46;
+        --color-border: #3f3f46;
+        --color-border-light: #27272a;
+        --color-text-primary: #fafafa;
+        --color-text-secondary: #d4d4d8;
+        --color-text-muted: #a1a1aa;
+        --color-text-faint: #71717a;
+        --color-accent: #22c55e;
+        --color-accent-hover: #16a34a;
+        --color-accent-light: rgba(34, 197, 94, 0.12);
+        --color-danger: #ef4444;
+        --color-danger-hover: #dc2626;
+        --color-danger-light: rgba(239, 68, 68, 0.12);
+        --color-info: #3b82f6;
+        --color-info-light: rgba(59, 130, 246, 0.12);
+        --color-warning: #f59e0b;
+        --color-gold: #facc15;
+        --color-gold-light: rgba(250, 204, 21, 0.12);
+        --color-focus-ring: rgba(34, 197, 94, 0.4);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    html[data-theme="dark"] {
+      --color-bg: #18181b;
+      --color-surface: #27272a;
+      --color-surface-hover: #3f3f46;
+      --color-border: #3f3f46;
+      --color-border-light: #27272a;
+      --color-text-primary: #fafafa;
+      --color-text-secondary: #d4d4d8;
+      --color-text-muted: #a1a1aa;
+      --color-text-faint: #71717a;
+      --color-accent: #22c55e;
+      --color-accent-hover: #16a34a;
+      --color-accent-light: rgba(34, 197, 94, 0.12);
+      --color-danger: #ef4444;
+      --color-danger-hover: #dc2626;
+      --color-danger-light: rgba(239, 68, 68, 0.12);
+      --color-info: #3b82f6;
+      --color-info-light: rgba(59, 130, 246, 0.12);
+      --color-warning: #f59e0b;
+      --color-gold: #facc15;
+      --color-gold-light: rgba(250, 204, 21, 0.12);
+      --color-focus-ring: rgba(34, 197, 94, 0.4);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    /* ========================================
+       Base
+       ======================================== */
     body {
       width: 400px;
       padding: 16px;
-      font-family: Arial, sans-serif;
+      font-family: var(--font-sans);
+      font-size: 14px;
       margin: 0;
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
+    /* ========================================
+       Header
+       ======================================== */
     .header {
       display: flex;
       justify-content: space-between;
@@ -21,76 +128,225 @@
     h1 {
       margin: 0;
       font-size: 18px;
-      color: #333;
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -0.02em;
     }
 
-    .search-box {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 12px;
-      box-sizing: border-box;
+    .header-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
+    /* ========================================
+       Buttons — Theme Toggle
+       ======================================== */
+    .theme-toggle-btn {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.15s ease;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      border-color: var(--color-text-muted);
+    }
+
+    .theme-toggle-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    .theme-toggle-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Icon visibility: show moon in light mode, sun in dark mode */
+    .theme-toggle-btn .icon-sun { display: none; }
+    .theme-toggle-btn .icon-moon { display: block; }
+
+    /* Manual dark override */
+    html[data-theme="dark"] .theme-toggle-btn .icon-sun { display: block; }
+    html[data-theme="dark"] .theme-toggle-btn .icon-moon { display: none; }
+
+    /* Manual light override — show moon */
+    html[data-theme="light"] .theme-toggle-btn .icon-sun { display: none; }
+    html[data-theme="light"] .theme-toggle-btn .icon-moon { display: block; }
+
+    /* System dark mode (auto) */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme="light"]) .theme-toggle-btn .icon-sun { display: block; }
+      html:not([data-theme="light"]) .theme-toggle-btn .icon-moon { display: none; }
+    }
+
+    /* ========================================
+       Buttons — Primary
+       ======================================== */
     .add-prompt-btn {
-      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+      background: var(--color-accent);
       color: white;
       border: none;
       padding: 8px 16px;
-      border-radius: 4px;
+      border-radius: var(--radius-md);
       cursor: pointer;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
-      outline: none;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: var(--shadow-sm);
     }
 
     .add-prompt-btn:hover {
-      background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
-      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
-      transform: translateY(-1px);
+      background: var(--color-accent-hover);
+      box-shadow: var(--shadow-md);
     }
 
     .add-prompt-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+      transform: scale(0.98);
     }
 
+    .add-prompt-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    /* ========================================
+       Buttons — Settings Gear
+       ======================================== */
+    .manage-tags-btn {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.15s ease;
+    }
+
+    .manage-tags-btn:hover {
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      border-color: var(--color-text-muted);
+    }
+
+    .manage-tags-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    .manage-tags-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ========================================
+       Update Notification
+       ======================================== */
+    .update-notification {
+      display: none;
+      background: var(--color-info-light);
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-info);
+      font-size: 13px;
+      color: var(--color-info);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .update-notification strong {
+      font-weight: 600;
+    }
+
+    .update-notification .dismiss-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: none;
+      cursor: pointer;
+      color: var(--color-info);
+      font-weight: bold;
+      padding: 4px;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    /* ========================================
+       Prompt Form
+       ======================================== */
     .prompt-form {
       display: none;
       margin-bottom: 16px;
-      padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: #f9f9f9;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
     }
 
     .form-group {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     label {
       display: block;
       margin-bottom: 4px;
-      font-weight: bold;
-      font-size: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--color-text-secondary);
     }
 
     input,
     textarea,
     select {
       width: 100%;
-      padding: 6px;
-      border: 1px solid #ddd;
-      border-radius: 3px;
+      padding: 8px 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
       box-sizing: border-box;
-      font-size: 12px;
+      font-size: 14px;
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--color-text-faint);
     }
 
     textarea {
-      height: 60px;
+      height: 80px;
       resize: vertical;
+      line-height: 1.5;
     }
 
     .form-buttons {
@@ -98,199 +354,111 @@
       gap: 8px;
     }
 
+    /* ========================================
+       Buttons — Save / Cancel
+       ======================================== */
     .save-btn,
     .cancel-btn {
       flex: 1;
-      padding: 6px;
+      padding: 8px 12px;
       border: none;
-      border-radius: 3px;
+      border-radius: var(--radius-md);
       cursor: pointer;
-      font-size: 12px;
-      transition: all 0.2s ease;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      transition: all 0.15s ease;
       position: relative;
       overflow: hidden;
     }
 
     .save-btn {
-      background: linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%);
+      background: var(--color-accent);
       color: white;
-      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
     }
 
     .save-btn:hover {
-      background: linear-gradient(135deg, #43A047 0%, #4CAF50 100%);
-      box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
-      transform: translateY(-1px);
+      background: var(--color-accent-hover);
     }
 
     .save-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+      transform: scale(0.98);
+    }
+
+    .save-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
     }
 
     .cancel-btn {
-      background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+      background: var(--color-surface-hover);
+      color: var(--color-text-secondary);
+      border: 1px solid var(--color-border);
     }
 
     .cancel-btn:hover {
-      background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
-      box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
-      transform: translateY(-1px);
+      background: var(--color-border);
+      color: var(--color-text-primary);
     }
 
     .cancel-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
+      transform: scale(0.98);
     }
 
-    .prompt-list {
-      max-height: 300px;
-      overflow-y: auto;
+    .cancel-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
     }
 
-    .prompt-item {
-      border: 1px solid #eee;
-      border-radius: 4px;
-      padding: 12px;
-      margin-bottom: 8px;
-      background: white;
-    }
-
-    .prompt-title {
-      font-weight: bold;
-      margin-bottom: 4px;
-      color: #333;
-    }
-
-    .prompt-category {
-      font-size: 11px;
-      color: #666;
-      background: #f0f0f0;
-      padding: 2px 6px;
-      border-radius: 10px;
-      display: inline-block;
-      margin-bottom: 6px;
-    }
-
-    .prompt-text {
-      font-size: 12px;
-      color: #555;
-      margin-bottom: 8px;
-      max-height: 40px;
-      overflow: hidden;
-    }
-
-    .prompt-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .copy-btn,
-    .delete-btn,
-    .edit-btn {
-      padding: 4px 8px;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-      transition: all 0.2s ease;
+    /* ========================================
+       Search
+       ======================================== */
+    .search-wrapper {
       position: relative;
-      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--color-text-faint);
+      pointer-events: none;
+    }
+
+    .search-box {
+      width: 100%;
+      padding: 8px 10px 8px 32px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-sizing: border-box;
+      font-size: 14px;
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .search-box:focus {
       outline: none;
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 3px var(--color-focus-ring);
     }
 
-    .copy-btn:focus,
-    .delete-btn:focus,
-    .edit-btn:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+    .search-box::placeholder {
+      color: var(--color-text-faint);
     }
 
-    .copy-btn {
-      background: linear-gradient(135deg, #2196F3 0%, #21CBF3 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
-    }
-
-    .copy-btn:hover {
-      background: linear-gradient(135deg, #1976D2 0%, #1BA5D1 100%);
-      box-shadow: 0 4px 8px rgba(33, 150, 243, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .copy-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
-    }
-
-    .delete-btn {
-      background: linear-gradient(135deg, #f44336 0%, #ff6b5b 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
-    }
-
-    .delete-btn:hover {
-      background: linear-gradient(135deg, #d32f2f 0%, #f44336 100%);
-      box-shadow: 0 4px 8px rgba(244, 67, 54, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .delete-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(244, 67, 54, 0.3);
-    }
-
-    .edit-btn {
-      background: linear-gradient(135deg, #FF9800 0%, #FFB74D 100%);
-      color: white;
-      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
-      outline: none;
-    }
-
-    .edit-btn:hover {
-      background: linear-gradient(135deg, #F57C00 0%, #FF9800 100%);
-      box-shadow: 0 4px 8px rgba(255, 152, 0, 0.4);
-      transform: translateY(-1px);
-    }
-
-    .edit-btn:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 4px rgba(255, 152, 0, 0.3);
-    }
-
-    .no-prompts {
-      text-align: center;
-      color: #666;
-      font-style: italic;
-      padding: 20px;
-    }
-
-    .footer {
-      text-align: center;
-      padding: 12px 0 8px 0;
-      border-top: 1px solid #eee;
-      margin-top: 16px;
-      font-size: 11px;
-      color: #666;
-    }
-
-    .footer a {
-      color: #4CAF50;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .footer a:hover {
-      text-decoration: underline;
-    }
-
+    /* ========================================
+       Filter Controls
+       ======================================== */
     .filter-controls {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       margin-bottom: 12px;
-      font-size: 12px;
     }
 
     .filter-group {
@@ -301,156 +469,41 @@
     }
 
     .filter-group label {
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 12px;
       margin: 0;
       white-space: nowrap;
+      color: var(--color-text-muted);
     }
 
     .filter-group select {
       flex: 1;
-      padding: 4px 6px;
-      font-size: 11px;
+      padding: 6px 8px;
+      font-size: 12px;
     }
 
-    .header-buttons {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    /* ========================================
+       Prompt List
+       ======================================== */
+    .prompt-list {
+      overflow-y: auto;
     }
 
-    .manage-tags-btn {
-      background: transparent;
-      color: #666;
-      border: none;
-      padding: 2px;
-      cursor: pointer;
-      font-size: 30px;
-      line-height: 1;
-      border-radius: 4px;
-      outline: none;
-    }
-
-    .manage-tags-btn:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.3);
-    }
-
-    .manage-tags-btn:hover {
-      background: #f0f0f0;
-      color: #333;
-    }
-
-    .tag-management {
-      display: none;
-      margin-bottom: 16px;
+    /* ========================================
+       Prompt Card
+       ======================================== */
+    .prompt-item {
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
       padding: 12px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background: #e8e8e8;
+      margin-bottom: 8px;
+      background: var(--color-bg);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
 
-    .tag-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .tag-item {
-      display: flex;
-      align-items: center;
-      background: #e0e0e0;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-    }
-
-    .tag-item.default {
-      background: #dcedc8;
-    }
-
-    .tag-item input[readonly] {
-      background: transparent;
-      color: #666;
-      cursor: default;
-    }
-
-    .tag-item input[readonly]:focus {
-      outline: none;
-      box-shadow: none;
-    }
-
-    .tag-item input {
-      background: transparent;
-      border: none;
-      font-size: 11px;
-      width: auto;
-      min-width: 40px;
-      padding: 0;
-      margin-right: 4px;
-    }
-
-    .tag-delete {
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 16px;
-      height: 16px;
-      font-size: 10px;
-      cursor: pointer;
-      margin-left: 4px;
-      outline: none;
-    }
-
-    .tag-delete:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
-    }
-
-    .add-tag-input {
-      width: 120px;
-      padding: 4px 6px;
-      font-size: 11px;
-      margin-right: 8px;
-    }
-
-    .star-btn {
-      background: transparent;
-      border: none;
-      font-size: 16px;
-      cursor: pointer;
-      color: #ccc;
-      padding: 4px;
-      border-radius: 50%;
-      transition: all 0.2s ease;
-      position: relative;
-      outline: none;
-    }
-
-    .star-btn:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
-    }
-
-    .star-btn:hover {
-      color: #ffd700;
-      background: rgba(255, 215, 0, 0.1);
-      transform: scale(1.1);
-    }
-
-    .star-btn:active {
-      transform: scale(0.95);
-    }
-
-    .star-btn.starred {
-      color: #ffd700;
-      text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-    }
-
-    .star-btn.starred:hover {
-      background: rgba(255, 215, 0, 0.15);
-      transform: scale(1.15);
+    .prompt-item:hover {
+      border-color: var(--color-text-faint);
+      box-shadow: var(--shadow-sm);
     }
 
     .prompt-header {
@@ -460,50 +513,11 @@
       margin-bottom: 4px;
     }
 
-    .prompt-category.favorite {
-      background: #ffd700;
-      color: #333;
-    }
-
-    .selected-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      margin-bottom: 6px;
-      min-height: 20px;
-    }
-
-    .selected-tag {
-      background: #e0e0e0;
-      padding: 2px 6px;
-      border-radius: 8px;
-      font-size: 10px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .selected-tag.favorite {
-      background: #ffd700;
-      color: #333;
-    }
-
-    .selected-tag-remove {
-      background: #f44336;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      width: 14px;
-      height: 14px;
-      font-size: 8px;
-      cursor: pointer;
-      line-height: 1;
-      outline: none;
-    }
-
-    .selected-tag-remove:focus {
-      outline: none;
-      box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
+    .prompt-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--color-text-primary);
+      line-height: 1.3;
     }
 
     .prompt-tags {
@@ -514,19 +528,755 @@
     }
 
     .prompt-tag {
-      background: #f0f0f0;
-      color: #666;
-      padding: 2px 6px;
-      border-radius: 8px;
-      font-size: 10px;
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 500;
+      border: 1px solid var(--color-border-light);
     }
 
     .prompt-tag.favorite {
-      background: #ffd700;
-      color: #333;
+      background: var(--color-gold-light);
+      color: var(--color-warning);
+      border-color: transparent;
     }
 
-    /* Button animations */
+    .prompt-text {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      margin-bottom: 8px;
+      max-height: 40px;
+      overflow: hidden;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      transition: filter 0.2s ease;
+      position: relative;
+    }
+
+    /* ========================================
+       Privacy — Sensitive Content Blur
+       ======================================== */
+    .prompt-text.sensitive {
+      filter: blur(6px);
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+    }
+
+    .prompt-text.sensitive:hover {
+      filter: blur(4px);
+    }
+
+    .prompt-text.sensitive.revealed {
+      filter: none;
+      cursor: default;
+      user-select: auto;
+    }
+
+    /* Global privacy shield — blur ALL text regardless of per-card setting */
+    body.privacy-shield .prompt-text {
+      filter: blur(6px) !important;
+      user-select: none !important;
+      cursor: default !important;
+    }
+
+    .sensitivity-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--color-text-faint);
+      margin-left: auto;
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+    }
+
+    .sensitivity-label.is-sensitive {
+      color: var(--color-warning);
+      background: var(--color-gold-light);
+    }
+
+    .sensitivity-label svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    /* Privacy shield header button */
+    .privacy-shield-btn {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.15s ease;
+    }
+
+    .privacy-shield-btn:hover {
+      background: var(--color-surface);
+      color: var(--color-text-primary);
+      border-color: var(--color-text-muted);
+    }
+
+    .privacy-shield-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    .privacy-shield-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .privacy-shield-btn.active {
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+      border-color: var(--color-danger);
+    }
+
+    .privacy-shield-btn.active:hover {
+      background: var(--color-danger);
+      color: white;
+    }
+
+    /* Peek hint on sensitive text */
+    .peek-hint {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      background: var(--color-bg);
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 1;
+    }
+
+    .prompt-text.sensitive:hover .peek-hint {
+      display: block;
+    }
+
+    .prompt-text.sensitive.revealed .peek-hint {
+      display: none;
+    }
+
+    body.privacy-shield .peek-hint {
+      display: none !important;
+    }
+
+    /* ========================================
+       Prompt Actions — Ghost Icon Buttons
+       ======================================== */
+    .prompt-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .prompt-item:hover .prompt-actions {
+      opacity: 1;
+    }
+
+    /* Keep actions visible when focused within */
+    .prompt-item:focus-within .prompt-actions {
+      opacity: 1;
+    }
+
+    .action-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      padding: 4px 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      font-family: var(--font-sans);
+      color: var(--color-text-muted);
+      transition: all 0.15s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .action-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 1px;
+    }
+
+    .action-copy:hover {
+      background: var(--color-info-light);
+      color: var(--color-info);
+      border-color: transparent;
+    }
+
+    .action-visibility:hover {
+      background: var(--color-gold-light);
+      color: var(--color-warning);
+      border-color: transparent;
+    }
+
+    .action-edit:hover {
+      background: var(--color-accent-light);
+      color: var(--color-accent);
+      border-color: transparent;
+    }
+
+    .action-delete:hover {
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+      border-color: transparent;
+    }
+
+    /* ========================================
+       Star / Favorite Button
+       ======================================== */
+    .star-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-faint);
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .star-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .star-btn:hover {
+      color: var(--color-gold);
+      background: var(--color-gold-light);
+    }
+
+    .star-btn:active {
+      transform: scale(0.9);
+    }
+
+    .star-btn:focus-visible {
+      outline: 2px solid var(--color-gold);
+      outline-offset: 1px;
+    }
+
+    .star-btn.starred {
+      color: var(--color-gold);
+    }
+
+    .star-btn.starred:hover {
+      background: var(--color-gold-light);
+    }
+
+    /* ========================================
+       Empty State
+       ======================================== */
+    .no-prompts {
+      text-align: center;
+      color: var(--color-text-muted);
+      padding: 32px 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .empty-state-icon {
+      display: block;
+      margin: 0 auto 12px;
+      width: 48px;
+      height: 48px;
+      color: var(--color-text-faint);
+      opacity: 0.6;
+    }
+
+    .empty-state-title {
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .empty-state-hint {
+      font-size: 13px;
+      color: var(--color-text-faint);
+    }
+
+    /* ========================================
+       Selected Tags (Form)
+       ======================================== */
+    .selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+      min-height: 24px;
+    }
+
+    .selected-tag {
+      background: var(--color-surface-hover);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+
+    .selected-tag.favorite {
+      background: var(--color-gold-light);
+      color: var(--color-warning);
+    }
+
+    .selected-tag-remove {
+      background: var(--color-danger);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      font-size: 9px;
+      cursor: pointer;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .selected-tag-remove:focus-visible {
+      outline: 2px solid var(--color-danger);
+      outline-offset: 1px;
+    }
+
+    /* ========================================
+       Settings Panel
+       ======================================== */
+    .tag-management {
+      display: none;
+      margin-bottom: 16px;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-surface);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .settings-header h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    .settings-close-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--color-text-muted);
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-close-btn:hover {
+      color: var(--color-text-primary);
+      background: var(--color-surface-hover);
+    }
+
+    .settings-close-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Settings Tabs */
+    .settings-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .settings-tab {
+      background: transparent;
+      border: none;
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: all 0.15s ease;
+    }
+
+    .settings-tab:hover {
+      color: var(--color-text-secondary);
+    }
+
+    .settings-tab.active {
+      color: var(--color-accent);
+      border-bottom-color: var(--color-accent);
+    }
+
+    .settings-tab:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
+    }
+
+    .settings-panel {
+      display: none;
+    }
+
+    .settings-panel.active {
+      display: block;
+    }
+
+    .settings-section-title {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+
+    /* Tag Management */
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .tag-item {
+      display: flex;
+      align-items: center;
+      background: var(--color-bg);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 12px;
+      border: 1px solid var(--color-border);
+    }
+
+    .tag-item.default {
+      background: var(--color-accent-light);
+      border-color: transparent;
+    }
+
+    .tag-item input[readonly] {
+      background: transparent;
+      color: var(--color-text-muted);
+      cursor: default;
+    }
+
+    .tag-item input[readonly]:focus {
+      outline: none;
+      box-shadow: none;
+      border-color: transparent;
+    }
+
+    .tag-item input {
+      background: transparent;
+      border: none;
+      font-size: 12px;
+      font-family: var(--font-sans);
+      width: auto;
+      min-width: 40px;
+      padding: 0;
+      margin-right: 4px;
+      color: var(--color-text-primary);
+    }
+
+    .tag-item input:focus {
+      box-shadow: none;
+    }
+
+    .tag-delete {
+      background: var(--color-danger);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tag-delete:focus-visible {
+      outline: 2px solid var(--color-danger);
+      outline-offset: 1px;
+    }
+
+    .add-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .add-tag-input {
+      width: 140px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+
+    .add-tag-btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      background: var(--color-accent);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .add-tag-btn:hover {
+      background: var(--color-accent-hover);
+    }
+
+    .add-tag-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    /* Import/Export */
+    .import-export-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .import-export-btn {
+      flex: 1;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      background: var(--color-bg);
+      color: var(--color-text-secondary);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .import-export-btn:hover {
+      background: var(--color-surface-hover);
+      border-color: var(--color-text-faint);
+    }
+
+    .import-export-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    .import-status {
+      font-size: 12px;
+      color: var(--color-text-muted);
+      text-align: center;
+      min-height: 16px;
+    }
+
+    /* About */
+    .about-section {
+      font-size: 13px;
+      color: var(--color-text-muted);
+      line-height: 1.6;
+    }
+
+    .about-section p {
+      margin: 0 0 8px 0;
+    }
+
+    .about-link {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--color-accent);
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: var(--font-sans);
+    }
+
+    .about-link:hover {
+      color: var(--color-accent-hover);
+    }
+
+    .about-link:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    .changelog-preview {
+      display: none;
+      margin-top: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      background: var(--color-bg);
+      padding: 10px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--color-text-secondary);
+    }
+
+    /* ========================================
+       Footer
+       ======================================== */
+    .footer {
+      text-align: center;
+      padding: 8px 0 4px 0;
+      border-top: 1px solid var(--color-border-light);
+      margin-top: 12px;
+      font-size: 10px;
+      color: var(--color-text-faint);
+    }
+
+    .footer a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ========================================
+       Changelog Modal
+       ======================================== */
+    .changelog-modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .changelog-modal {
+      background: var(--color-bg);
+      width: 85%;
+      max-height: 80%;
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-md);
+    }
+
+    .changelog-modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .changelog-modal-header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    .changelog-close-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      color: var(--color-text-muted);
+      border-radius: var(--radius-sm);
+    }
+
+    .changelog-close-btn:hover {
+      color: var(--color-text-primary);
+      background: var(--color-surface);
+    }
+
+    .changelog-content {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--color-text-secondary);
+    }
+
+    .changelog-dismiss-btn {
+      margin-top: 16px;
+      background: var(--color-accent);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      transition: background 0.15s ease;
+    }
+
+    .changelog-dismiss-btn:hover {
+      background: var(--color-accent-hover);
+    }
+
+    .changelog-dismiss-btn:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+
+    /* ========================================
+       Animations
+       ======================================== */
     @keyframes ripple {
       to {
         transform: scale(4);
@@ -534,27 +1284,19 @@
       }
     }
 
-    @keyframes pulse {
-      0% {
-        transform: scale(1);
-      }
-
-      50% {
-        transform: scale(1.05);
-      }
-
-      100% {
-        transform: scale(1);
-      }
+    .prompt-category {
+      font-size: 11px;
+      color: var(--color-text-muted);
+      background: var(--color-surface);
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+      display: inline-block;
+      margin-bottom: 6px;
     }
 
-    /* Subtle pulse animation for important buttons */
-    .add-prompt-btn {
-      animation: pulse 2s infinite;
-    }
-
-    .add-prompt-btn:hover {
-      animation: none;
+    .prompt-category.favorite {
+      background: var(--color-gold-light);
+      color: var(--color-warning);
     }
   </style>
 </head>
@@ -564,25 +1306,54 @@
     <h1>Prompt Box</h1>
     <div class="header-buttons">
       <button class="add-prompt-btn" id="addPromptBtn">+ Add</button>
-      <button class="manage-tags-btn" id="manageTagsBtn">⚙</button>
+      <button class="privacy-shield-btn" id="privacyShieldBtn" title="Privacy shield — hide all previews">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      </button>
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      </button>
+      <button class="manage-tags-btn" id="manageTagsBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+      </button>
     </div>
   </div>
 
-  <div id="updateNotification"
-    style="display: none; background: #e3f2fd; padding: 10px; margin-bottom: 12px; border-radius: 4px; border: 1px solid #2196F3; font-size: 12px; color: #0d47a1; cursor: pointer;">
+  <div class="update-notification" id="updateNotification">
     <strong>New in V2.0!</strong> We've updated the extension with improvements. <span
       style="text-decoration: underline;">See what's new.</span>
-    <button id="dismissUpdateBtn"
-      style="float: right; border: none; background: none; cursor: pointer; color: #0d47a1; font-weight: bold; padding: 0 4px;">✕</button>
+    <button class="dismiss-btn" id="dismissUpdateBtn">&#x2715;</button>
   </div>
 
   <div class="prompt-form" id="promptForm">
     <div class="form-group">
-      <label>Title:</label>
+      <label>Title</label>
       <input type="text" id="promptTitle" placeholder="Give your prompt a name">
     </div>
     <div class="form-group">
-      <label>Tags:</label>
+      <label>Tags</label>
       <div class="selected-tags" id="selectedTags"></div>
       <select id="promptCategory">
         <option value="">Select a tag...</option>
@@ -595,7 +1366,7 @@
       </select>
     </div>
     <div class="form-group">
-      <label>Prompt:</label>
+      <label>Prompt</label>
       <textarea id="promptText" placeholder="Enter your prompt here..."></textarea>
     </div>
     <div class="form-buttons">
@@ -605,63 +1376,75 @@
   </div>
 
   <div class="tag-management" id="tagManagement">
-    <h3 style="margin: 0 0 10px 0; font-size: 14px;">Settings</h3>
+    <div class="settings-header">
+      <h3>Settings</h3>
+      <button class="settings-close-btn" id="closeTagsBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
 
-    <!-- Tag Management Section -->
-    <div class="settings-section" style="margin-bottom: 16px;">
-      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Manage Tags</h4>
+    <div class="settings-tabs">
+      <button class="settings-tab active" data-tab="tags">Tags</button>
+      <button class="settings-tab" data-tab="import-export">Import / Export</button>
+      <button class="settings-tab" data-tab="about">About</button>
+    </div>
+
+    <!-- Tags Panel -->
+    <div class="settings-panel active" id="panel-tags">
+      <h4 class="settings-section-title">Manage Tags</h4>
       <div class="tag-list" id="tagList"></div>
-      <div style="display: flex; align-items: center; margin-bottom: 8px;">
+      <div class="add-tag-row">
         <input type="text" class="add-tag-input" id="addTagInput" placeholder="New tag name">
-        <button class="save-btn" id="addTagBtn" style="padding: 4px 8px; font-size: 11px;">Add</button>
+        <button class="add-tag-btn" id="addTagBtn">Add</button>
       </div>
     </div>
 
-    <!-- Import/Export Section -->
-    <div class="settings-section" style="margin-bottom: 16px;">
-      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">Import/Export Prompts</h4>
-      <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-        <button class="save-btn" id="exportBtn" style="flex: 1; padding: 6px; font-size: 11px;">Export CSV</button>
-        <button class="save-btn" id="templateBtn" style="flex: 1; padding: 6px; font-size: 11px;">Download
-          Template</button>
+    <!-- Import/Export Panel -->
+    <div class="settings-panel" id="panel-import-export">
+      <h4 class="settings-section-title">Import / Export Prompts</h4>
+      <div class="import-export-row">
+        <button class="import-export-btn" id="exportBtn">Export CSV</button>
+        <button class="import-export-btn" id="templateBtn">Download Template</button>
       </div>
       <div style="margin-bottom: 8px;">
         <input type="file" id="importFile" accept=".csv" style="display: none;">
-        <button class="save-btn" id="importBtn" style="width: 100%; padding: 6px; font-size: 11px;">Import CSV</button>
+        <button class="import-export-btn" id="importBtn" style="width: 100%;">Import CSV</button>
       </div>
-      <div id="importStatus" style="font-size: 10px; color: #666; text-align: center; min-height: 14px;"></div>
+      <div class="import-status" id="importStatus"></div>
     </div>
 
-    <!-- About Section -->
-    <div class="settings-section" style="margin-bottom: 16px; border-top: 1px solid #ddd; padding-top: 10px;">
-      <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #555;">About Prompt Box</h4>
-      <div style="font-size: 11px; color: #666;">
-        <p style="margin: 0 0 8px 0;">Version: <span id="appVersion">2.1.1</span></p>
-        <button id="viewChangelogBtn"
-          style="background: none; border: none; padding: 0; color: #2196F3; text-decoration: underline; cursor: pointer; font-size: 11px;">View
-          Release Notes</button>
-        <div id="changelogPreview"
-          style="display: none; margin-top: 8px; max-height: 150px; overflow-y: auto; background: #fff; padding: 8px; border: 1px solid #eee; border-radius: 4px;">
-          Loading changes...</div>
+    <!-- About Panel -->
+    <div class="settings-panel" id="panel-about">
+      <div class="about-section">
+        <p>Version: <strong id="appVersion">3.0.0</strong></p>
+        <button class="about-link" id="viewChangelogBtn">View Release Notes</button>
+        <div class="changelog-preview" id="changelogPreview">Loading changes...</div>
       </div>
-    </div>
-
-    <div style="display: flex; gap: 8px;">
-      <button class="cancel-btn" id="closeTagsBtn" style="flex: 1; padding: 4px; font-size: 11px;">Close</button>
     </div>
   </div>
 
-  <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
+  <div class="search-wrapper">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+    <input type="text" class="search-box" id="searchBox" placeholder="Search prompts...">
+  </div>
 
   <div class="filter-controls">
     <div class="filter-group">
-      <label for="tagFilter">Filter by tag:</label>
+      <label for="tagFilter">Filter:</label>
       <select id="tagFilter">
         <option value="">All tags</option>
       </select>
     </div>
     <div class="filter-group">
-      <label for="sortBy">Sort by:</label>
+      <label for="sortBy">Sort:</label>
       <select id="sortBy">
         <option value="title-asc">Title (A-Z)</option>
         <option value="title-desc">Title (Z-A)</option>
@@ -677,29 +1460,34 @@
   </div>
 
   <div class="prompt-list" id="promptList">
-    <div class="no-prompts">No prompts saved yet. Click "+ Add" to create your first prompt!</div>
+    <div class="no-prompts">
+      <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="12" y1="18" x2="12" y2="12" />
+        <line x1="9" y1="15" x2="15" y2="15" />
+      </svg>
+      <div class="empty-state-title">No prompts yet</div>
+      <div class="empty-state-hint">Click <strong>+ Add</strong> to save your first prompt</div>
+    </div>
   </div>
 
   <div class="footer">
-    Built with ❤️ by <a href="https://x.com/Lbwalton" target="_blank">LB</a>
+    Built by <a href="https://x.com/Lbwalton" target="_blank">LB</a>
   </div>
 
   <!-- Changelog Modal -->
-  <div id="changelogModal"
-    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-    <div
-      style="background: white; width: 85%; max-height: 80%; border-radius: 8px; padding: 20px; display: flex; flex-direction: column; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 style="margin: 0; font-size: 18px; color: #333;">What's New</h2>
-        <button id="closeChangelogModal"
-          style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 0; line-height: 1;">×</button>
+  <div class="changelog-modal-overlay" id="changelogModal">
+    <div class="changelog-modal">
+      <div class="changelog-modal-header">
+        <h2>What's New</h2>
+        <button class="changelog-close-btn" id="closeChangelogModal">&times;</button>
       </div>
-      <div id="changelogContent" style="flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.5; color: #444;">
+      <div class="changelog-content" id="changelogContent">
         Loading updates...
       </div>
-      <button id="closeChangelogBtnLarge"
-        style="margin-top: 16px; background: #2196F3; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer;">Got
-        it!</button>
+      <button class="changelog-dismiss-btn" id="closeChangelogBtnLarge">Got it!</button>
     </div>
   </div>
 

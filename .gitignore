@@ -30,6 +30,9 @@ package-lock.json
 *.crx
 *.pem
 
+# Marketing assets (large video files etc.)
+marketing/
+
 # Work-in-progress assets
 *Background Removed*
 

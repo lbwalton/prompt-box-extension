@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.2.5] - 2026-05-16
+### Changed
+- **Refreshed accent colors to match the brand mark.** Primary actions are now warm orange, info and success states use a calmer teal — both pulled directly from the toolbar icon — for a more cohesive look between the icon you click and the popup that opens.
+
 ## [3.2.4] - 2026-05-16
 ### Fixed
 - **Text expansion in email composers and other apps that use iframes**: Shortcuts now expand inside web apps that compose mail or messages inside an embedded frame, including many CRM and sales tools layered on top of Gmail. Apps that render their editor inside a closed shadow DOM still may not be reachable.

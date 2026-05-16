@@ -1312,9 +1312,14 @@ function showImportStatus(message, type = 'info') {
   if (!statusElement) return;
 
   statusElement.textContent = message;
-  statusElement.style.color = type === 'error' ? '#dc2626' :
-    type === 'warning' ? '#d97706' :
-      type === 'success' ? '#16a34a' : '#71717a';
+  const cs = getComputedStyle(document.documentElement);
+  const tokenMap = {
+    error: cs.getPropertyValue('--color-danger').trim() || '#dc2626',
+    warning: cs.getPropertyValue('--color-warning').trim() || '#b45309',
+    success: cs.getPropertyValue('--color-info').trim() || '#0d9488',
+    info: cs.getPropertyValue('--color-text-muted').trim() || '#71717a'
+  };
+  statusElement.style.color = tokenMap[type] || tokenMap.info;
 
   // Clear message after 3 seconds
   setTimeout(() => {

@@ -17,18 +17,21 @@
       --color-text-secondary: #52525b;
       --color-text-muted: #71717a;
       --color-text-faint: #a1a1aa;
-      --color-accent: #16a34a;
-      --color-accent-hover: #15803d;
-      --color-accent-light: rgba(22, 163, 74, 0.1);
+      /* Brand — orange-600 for interactive (AA contrast with white text) */
+      --color-accent: #ea580c;
+      --color-accent-hover: #c2410c;
+      --color-accent-light: rgba(249, 115, 22, 0.10);
       --color-danger: #dc2626;
       --color-danger-hover: #b91c1c;
       --color-danger-light: rgba(220, 38, 38, 0.08);
-      --color-info: #2563eb;
-      --color-info-light: rgba(37, 99, 235, 0.08);
-      --color-warning: #d97706;
+      /* Info / success — teal-600, brand secondary */
+      --color-info: #0d9488;
+      --color-info-light: rgba(13, 148, 136, 0.10);
+      /* Warning — amber-700, shifted away from accent orange */
+      --color-warning: #b45309;
       --color-gold: #eab308;
       --color-gold-light: rgba(234, 179, 8, 0.15);
-      --color-focus-ring: rgba(22, 163, 74, 0.4);
+      --color-focus-ring: rgba(234, 88, 12, 0.45);
       --radius-sm: 4px;
       --radius-md: 6px;
       --radius-lg: 8px;
@@ -53,18 +56,21 @@
         --color-text-secondary: #d4d4d8;
         --color-text-muted: #a1a1aa;
         --color-text-faint: #71717a;
-        --color-accent: #22c55e;
-        --color-accent-hover: #16a34a;
-        --color-accent-light: rgba(34, 197, 94, 0.12);
+        /* Brand — orange-400, brighter on dark surfaces */
+        --color-accent: #fb923c;
+        --color-accent-hover: #fdba74;
+        --color-accent-light: rgba(251, 146, 60, 0.14);
         --color-danger: #ef4444;
         --color-danger-hover: #dc2626;
         --color-danger-light: rgba(239, 68, 68, 0.12);
-        --color-info: #3b82f6;
-        --color-info-light: rgba(59, 130, 246, 0.12);
+        /* Info / success — teal-500 */
+        --color-info: #14b8a6;
+        --color-info-light: rgba(20, 184, 166, 0.14);
+        /* Warning — amber-500 */
         --color-warning: #f59e0b;
         --color-gold: #facc15;
         --color-gold-light: rgba(250, 204, 21, 0.12);
-        --color-focus-ring: rgba(34, 197, 94, 0.4);
+        --color-focus-ring: rgba(251, 146, 60, 0.50);
         --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
         --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
       }
@@ -80,18 +86,21 @@
       --color-text-secondary: #d4d4d8;
       --color-text-muted: #a1a1aa;
       --color-text-faint: #71717a;
-      --color-accent: #22c55e;
-      --color-accent-hover: #16a34a;
-      --color-accent-light: rgba(34, 197, 94, 0.12);
+      /* Brand — orange-400, brighter on dark surfaces */
+      --color-accent: #fb923c;
+      --color-accent-hover: #fdba74;
+      --color-accent-light: rgba(251, 146, 60, 0.14);
       --color-danger: #ef4444;
       --color-danger-hover: #dc2626;
       --color-danger-light: rgba(239, 68, 68, 0.12);
-      --color-info: #3b82f6;
-      --color-info-light: rgba(59, 130, 246, 0.12);
+      /* Info / success — teal-500 */
+      --color-info: #14b8a6;
+      --color-info-light: rgba(20, 184, 166, 0.14);
+      /* Warning — amber-500 */
       --color-warning: #f59e0b;
       --color-gold: #facc15;
       --color-gold-light: rgba(250, 204, 21, 0.12);
-      --color-focus-ring: rgba(34, 197, 94, 0.4);
+      --color-focus-ring: rgba(251, 146, 60, 0.50);
       --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
       --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     }
@@ -205,12 +214,12 @@
       font-weight: 600;
       font-family: var(--font-sans);
       transition: background 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: var(--shadow-sm);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), var(--shadow-sm);
     }
 
     .add-prompt-btn:hover {
       background: var(--color-accent-hover);
-      box-shadow: var(--shadow-md);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.20), var(--shadow-md);
     }
 
     .add-prompt-btn:active {
@@ -1684,7 +1693,7 @@
     <!-- About Panel -->
     <div class="settings-panel" id="panel-about">
       <div class="about-section">
-        <p>Version: <strong id="appVersion">3.2.4</strong></p>
+        <p>Version: <strong id="appVersion">3.2.5</strong></p>
         <p>Prompts sync across Chrome profiles via Chrome Sync. Use <strong>Import / Export</strong> to back up your library before uninstalling.</p>
         <button class="about-link" id="viewChangelogBtn">View Release Notes</button>
         <div class="changelog-preview" id="changelogPreview">Loading changes...</div>

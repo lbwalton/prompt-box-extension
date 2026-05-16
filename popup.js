@@ -1132,6 +1132,52 @@ function initTagCombobox() {
     if (!comboboxOpen) openTagComboboxMenu();
     else renderTagComboboxMenu(this.value);
   });
+
+  // Use mousedown (not click) so it fires before input blur,
+  // preventing a blur-close race that would swallow the selection.
+  menu.addEventListener('mousedown', function (e) {
+    const optionEl = e.target.closest('.tag-combobox-option');
+    if (!optionEl) return;
+    e.preventDefault(); // keep focus in the input
+    const index = parseInt(optionEl.getAttribute('data-index'), 10);
+    activateTagComboboxOption(comboboxFilteredOptions[index]);
+  });
+
+  input.addEventListener('keydown', handleTagComboboxKeydown);
+}
+
+// Activate (select or create) a combobox option.
+function activateTagComboboxOption(option) {
+  if (!option) return;
+
+  if (option.type === 'tag') {
+    if (!selectedTags.includes(option.value)) {
+      selectedTags.push(option.value);
+      updateSelectedTagsDisplay();
+    }
+  }
+  // 'create' branch added in Task 5
+
+  // Clear input, re-render menu (already-selected tag now hidden)
+  const input = document.getElementById('tagComboboxInput');
+  input.value = '';
+  renderTagComboboxMenu('');
+  input.focus();
+}
+
+// Handle keyboard navigation and activation in the combobox.
+function handleTagComboboxKeydown(e) {
+  if (!comboboxOpen) return;
+
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (comboboxHighlightIndex >= 0 && comboboxFilteredOptions[comboboxHighlightIndex]) {
+      activateTagComboboxOption(comboboxFilteredOptions[comboboxHighlightIndex]);
+    } else if (comboboxFilteredOptions.length > 0) {
+      // No explicit highlight: activate the first option
+      activateTagComboboxOption(comboboxFilteredOptions[0]);
+    }
+  }
 }
 
 // Update the tag filter dropdown with all available tags

@@ -25,6 +25,11 @@ let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
 let storagePref = 'sync'; // 'sync' | 'local' — loaded from chrome.storage.local on startup
 
+// Tag combobox state
+let comboboxOpen = false;
+let comboboxHighlightIndex = -1;
+let comboboxFilteredOptions = []; // [{ type: 'tag' | 'create', value: string }]
+
 // Debug extension context on load
 console.log('=== EXTENSION DEBUGGING ===');
 console.log('Chrome object available:', typeof chrome !== 'undefined');
@@ -159,7 +164,7 @@ function setupEventListeners() {
   document.getElementById('manageTagsBtn').addEventListener('click', showTagManagement);
   document.getElementById('closeTagsBtn').addEventListener('click', hideTagManagement);
   document.getElementById('addTagBtn').addEventListener('click', addNewTag);
-  document.getElementById('promptCategory').addEventListener('change', addTagToPrompt);
+  initTagCombobox();
   document.getElementById('exportBtn').addEventListener('click', exportPrompts);
   document.getElementById('templateBtn').addEventListener('click', downloadTemplate);
   document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
@@ -394,7 +399,7 @@ function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
   }
 
   displayPrompts();
-  updateTagDropdown();
+  refreshTagSources();
   updateTagList();
   updateTagFilterDropdown();
 
@@ -968,7 +973,7 @@ function addNewTag() {
   availableTags.push({ name: tagName, isDefault: false });
   chrome.storage.sync.set({ availableTags: availableTags }, function () {
     updateTagList();
-    updateTagDropdown();
+    refreshTagSources();
     input.value = '';
   });
 }
@@ -990,7 +995,7 @@ function deleteTag(tagName) {
     chrome.storage.sync.set({ availableTags: availableTags });
     savePrompts(prompts, function () {
       updateTagList();
-      updateTagDropdown();
+      refreshTagSources();
       filterAndSortPrompts();
     });
   }
@@ -1027,34 +1032,106 @@ function updateTagName(oldName, newName) {
   // Save changes
   chrome.storage.sync.set({ availableTags: availableTags });
   savePrompts(prompts, function () {
-    updateTagDropdown();
+    refreshTagSources();
     filterAndSortPrompts();
   });
 }
 
-// Update the tag dropdown in the form
-function updateTagDropdown() {
-  const dropdown = document.getElementById('promptCategory');
-  const currentValue = dropdown.value;
+// Refresh all UI surfaces that reflect availableTags.
+// Replaces the old updateTagDropdown(); name reflects that there's no
+// <select> anymore — the form uses the combobox.
+function refreshTagSources() {
+  if (comboboxOpen) {
+    const query = document.getElementById('tagComboboxInput').value;
+    renderTagComboboxMenu(query);
+  }
+  updateTagFilterDropdown();
+}
 
-  const allTags = availableTags.map(tag => tag.name);
+// Open the combobox menu and render its options.
+function openTagComboboxMenu() {
+  comboboxOpen = true;
+  comboboxHighlightIndex = -1;
+  const input = document.getElementById('tagComboboxInput');
+  input.setAttribute('aria-expanded', 'true');
+  renderTagComboboxMenu(input.value);
+}
 
-  dropdown.innerHTML = '<option value="">Select a tag...</option>';
+// Close the combobox menu.
+function closeTagComboboxMenu() {
+  comboboxOpen = false;
+  comboboxHighlightIndex = -1;
+  comboboxFilteredOptions = [];
+  const menu = document.getElementById('tagComboboxMenu');
+  const input = document.getElementById('tagComboboxInput');
+  menu.hidden = true;
+  menu.innerHTML = '';
+  input.setAttribute('aria-expanded', 'false');
+}
 
-  allTags.forEach(tag => {
-    const option = document.createElement('option');
-    option.value = tag;
-    option.textContent = tag;
-    dropdown.appendChild(option);
-  });
+// Build the list of menu options and render them.
+function renderTagComboboxMenu(rawQuery) {
+  const menu = document.getElementById('tagComboboxMenu');
+  const query = (rawQuery || '').trim();
+  const queryLower = query.toLowerCase();
 
-  // Restore previous selection if it still exists
-  if (allTags.includes(currentValue)) {
-    dropdown.value = currentValue;
+  // Exclude already-selected tags
+  const candidates = availableTags
+    .map(t => t.name)
+    .filter(name => !selectedTags.includes(name));
+
+  // Filter by substring match if there's a query
+  const matches = query
+    ? candidates.filter(name => name.toLowerCase().includes(queryLower))
+    : candidates;
+
+  comboboxFilteredOptions = matches.map(name => ({ type: 'tag', value: name }));
+
+  // Append a "Create" option if query is non-empty and has no exact case-insensitive match
+  const hasExactMatch = availableTags.some(
+    t => t.name.toLowerCase() === queryLower
+  );
+  if (query && !hasExactMatch) {
+    comboboxFilteredOptions.push({ type: 'create', value: query });
   }
 
-  // Also update the tag filter dropdown
-  updateTagFilterDropdown();
+  // Build HTML
+  if (comboboxFilteredOptions.length === 0) {
+    menu.innerHTML = '<div class="tag-combobox-empty">No tags available</div>';
+    menu.hidden = false;
+    return;
+  }
+
+  const tagOptions = comboboxFilteredOptions.filter(o => o.type === 'tag');
+  const createOption = comboboxFilteredOptions.find(o => o.type === 'create');
+
+  let html = '';
+  tagOptions.forEach((opt, i) => {
+    html += `<div class="tag-combobox-option" role="option" data-index="${i}" data-type="tag" data-value="${escapeHTML(opt.value)}">${escapeHTML(opt.value)}</div>`;
+  });
+  if (createOption) {
+    if (tagOptions.length > 0) {
+      html += '<div class="tag-combobox-divider"></div>';
+    }
+    const createIndex = comboboxFilteredOptions.length - 1;
+    html += `<div class="tag-combobox-option is-create" role="option" data-index="${createIndex}" data-type="create" data-value="${escapeHTML(createOption.value)}">Create "${escapeHTML(createOption.value)}"</div>`;
+  }
+
+  // eslint-disable-next-line no-unsanitized/property -- all interpolated values escaped via escapeHTML(); index is a number from controlled loop
+  menu.innerHTML = html;
+  menu.hidden = false;
+}
+
+// Wire up the combobox event listeners. Called once during setupEventListeners.
+function initTagCombobox() {
+  const input = document.getElementById('tagComboboxInput');
+  const menu = document.getElementById('tagComboboxMenu');
+
+  input.addEventListener('focus', openTagComboboxMenu);
+  input.addEventListener('input', function () {
+    if (!comboboxOpen) openTagComboboxMenu();
+    else renderTagComboboxMenu(this.value);
+  });
 }
 
 // Update the tag filter dropdown with all available tags
@@ -1076,20 +1153,6 @@ function updateTagFilterDropdown() {
   if (allTags.includes(currentValue)) {
     dropdown.value = currentValue;
   }
-}
-
-// Add tag to current prompt being edited
-function addTagToPrompt() {
-  const select = document.getElementById('promptCategory');
-  const selectedTag = select.value;
-
-  if (selectedTag && !selectedTags.includes(selectedTag)) {
-    selectedTags.push(selectedTag);
-    updateSelectedTagsDisplay();
-  }
-
-  // Reset dropdown
-  select.value = '';
 }
 
 // Remove tag from current prompt being edited
@@ -1233,7 +1296,7 @@ function importPrompts(event) {
       chrome.storage.sync.set({ availableTags: availableTags });
       savePrompts(prompts, function () {
         filterAndSortPrompts();
-        updateTagDropdown();
+        refreshTagSources();
         showImportStatus(`Successfully imported ${importedCount} prompts`, 'success');
       });
 

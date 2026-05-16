@@ -13,6 +13,8 @@ Prompt Box is a Chrome extension (Manifest V3) that lets users store, organize, 
 
 There is no build step for the extension itself. The files are loaded directly by Chrome.
 
+> **Note:** The manifest file is always `manifest.json` (all lowercase). Never write it as `Manifest.json`.
+
 ## Design System (v3.0)
 
 All styling uses CSS custom properties defined in `:root` within popup.html. Dark mode is handled via `@media (prefers-color-scheme: dark)` overriding the same tokens.
@@ -87,6 +89,8 @@ When bumping the version:
 1. Update `manifest.json` version
 2. Add a new section at the top of `CHANGELOG.md`
 3. Update `#appVersion` text in popup.html if it's hardcoded
+4. Update `prompt-box-store-listing.md` to reflect any new features or changed permissions
+5. Update `prompt-box-privacy-practices.md` if any permissions were added/removed, external connections changed, or data handling changed — add a row to the Changelog table at the bottom and update the Gist at https://gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1
 
 ## Testing
 
@@ -100,6 +104,34 @@ No automated test suite currently. Test manually by loading the unpacked extensi
 - Dark mode appearance
 - Right-click "Save to Prompt Box" context menu
 - Settings panel tab switching
+
+## Pack and Ship
+
+When asked to "pack and ship" or "create a release zip", follow these steps:
+
+1. Run the pre-commit checklist (`npm run security` — fix all errors)
+2. Ensure `CHANGELOG.md` has an entry for the current version
+3. Confirm `manifest.json` version is correct
+4. Ensure `prompt-box-store-listing.md` is up to date — any new features, permission changes, or privacy-relevant changes must be reflected before shipping
+5. Ensure `prompt-box-privacy-practices.md` is up to date — update whenever permissions change, new external connections are added, or data handling changes. This file maps directly to the Privacy Practices tab in the Chrome Web Store Developer Dashboard
+   - Privacy policy URL: https://gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1
+   - If the policy content changes, update the Gist directly (the URL stays the same)
+5. Create the zip with **runtime files only** (no dev files, no node_modules, no docs):
+
+```bash
+cd "/Users/labroiwalton/Projects/Deployed/Chrome Extensions/Prompt-box/prompt-box-extension"
+VERSION=$(node -p "require('./manifest.json').version")
+zip -j "/Users/labroiwalton/Projects/Deployed/Chrome Extensions/prompt-box-v${VERSION}.zip" \
+  manifest.json popup.html popup.js background.js content.js \
+  icon16.png icon48.png icon128.png
+echo "✓ Created /Users/labroiwalton/Projects/Deployed/Chrome Extensions/prompt-box-v${VERSION}.zip"
+```
+
+The zip is saved directly to `/Users/labroiwalton/Projects/Deployed/Chrome Extensions/` (not inside the Prompt-box subfolder) — that's the upload-ready file for the Chrome Web Store.
+
+**Runtime files to include:** `manifest.json`, `popup.html`, `popup.js`, `background.js`, `content.js`, `icon16.png`, `icon48.png`, `icon128.png`
+
+**Never include:** `node_modules/`, `package.json`, `package-lock.json`, `eslint.security.js`, `build.js`, `build.sh`, `CLAUDE.md`, `SECURITY-GUIDE.md`, `PRD.md`, `README.md`, `*.mdc`, `test-*.html`, legacy icon assets
 
 ## Files You Can Ignore
 

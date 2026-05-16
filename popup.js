@@ -23,6 +23,7 @@ const defaultTags = [
 let availableTags = [...defaultTags]; // Tags available for selection
 let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
+let storagePref = 'sync'; // 'sync' | 'local' — loaded from chrome.storage.local on startup
 
 // Debug extension context on load
 console.log('=== EXTENSION DEBUGGING ===');
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Theme: load saved preference on startup
 function loadSavedTheme() {
-  chrome.storage.local.get(['theme'], function (result) {
+  chrome.storage.sync.get(['theme'], function (result) {
     if (result.theme && result.theme !== 'auto') {
       document.documentElement.setAttribute('data-theme', result.theme);
     }
@@ -63,7 +64,7 @@ function toggleTheme() {
 
   const next = isDark ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
-  chrome.storage.local.set({ theme: next });
+  chrome.storage.sync.set({ theme: next });
 }
 
 function checkUpdateStatus() {
@@ -186,6 +187,24 @@ function setupEventListeners() {
 
   // Privacy shield toggle
   document.getElementById('privacyShieldBtn').addEventListener('click', togglePrivacyShield);
+
+  // Storage preference toggle
+  document.querySelectorAll('input[name="storagePref"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      setStoragePref(this.value);
+    });
+  });
+
+  // Cloud sync survey
+  document.getElementById('surveyYesBtn')?.addEventListener('click', function () {
+    chrome.tabs.create({ url: 'https://prompt-box-survey.lbwalton.workers.dev' });
+    dismissSurvey();
+  });
+  document.getElementById('surveyNoBtn')?.addEventListener('click', dismissSurvey);
+  document.getElementById('surveyDismissBtn')?.addEventListener('click', dismissSurvey);
+
+  // Sync fallback banner — export shortcut
+  document.getElementById('syncFallbackExportBtn')?.addEventListener('click', exportPrompts);
 
   // Set up event delegation for prompt buttons + peek-to-reveal
   const promptList = document.getElementById('promptList');
@@ -339,26 +358,68 @@ function hideForm() {
   updateSelectedTagsDisplay();
 }
 
-// Load all prompts from Chrome storage
+// Load all prompts from Chrome storage, respecting the user's storagePref
 function loadPrompts() {
-  chrome.storage.local.get(['prompts'], function (result) {
-    prompts = result.prompts || [];
-    displayPrompts();
-    updateTagDropdown();
-    updateTagFilterDropdown();
+  // Always read storagePref from local (it lives locally regardless of sync setting)
+  chrome.storage.local.get(['storagePref', 'prompts', 'syncFallback'], function (localResult) {
+    storagePref = localResult.storagePref || 'sync';
+    updateStoragePrefUI();
 
-    // Load filter settings after everything is ready
-    loadFilterSettings();
-  });
-
-  // Load custom tags
-  chrome.storage.local.get(['availableTags'], function (result) {
-    if (result.availableTags) {
-      availableTags = result.availableTags;
+    if (storagePref === 'local') {
+      // Local-only mode: use local storage, skip sync entirely
+      prompts = localResult.prompts || [];
+      finishLoadPrompts(prompts, null, localResult);
+    } else {
+      // Sync mode: read from sync, fall back to local on first run or quota error
+      chrome.storage.sync.get(['prompts', 'availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+        if (!syncResult.prompts && localResult.prompts && localResult.prompts.length > 0) {
+          // First-time migration: push existing local prompts to sync
+          savePrompts(localResult.prompts);
+          prompts = localResult.prompts;
+        } else {
+          prompts = syncResult.prompts || localResult.prompts || [];
+        }
+        finishLoadPrompts(prompts, syncResult, localResult);
+      });
     }
-    updateTagDropdown();
-    updateTagList();
   });
+}
+
+// Shared completion logic for loadPrompts
+function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
+  prompts = loadedPrompts;
+
+  if (syncResult && syncResult.availableTags) {
+    availableTags = syncResult.availableTags;
+  }
+
+  displayPrompts();
+  updateTagDropdown();
+  updateTagList();
+  updateTagFilterDropdown();
+
+  // Show sync fallback banner only in sync mode when quota was exceeded
+  if (storagePref === 'sync' && localResult.syncFallback) {
+    showSyncFallbackBanner();
+  }
+
+  // Restore filter/sort preferences (always in sync)
+  if (syncResult && syncResult.filterSettings) {
+    const settings = syncResult.filterSettings;
+    if (settings.tagFilter) document.getElementById('tagFilter').value = settings.tagFilter;
+    if (settings.sortBy) document.getElementById('sortBy').value = settings.sortBy;
+    filterAndSortPrompts();
+  }
+
+  // Survey shown to all users — even local-only users may want cross-device sync
+  if (syncResult) {
+    checkCloudSyncSurvey(syncResult.cloudSyncSurvey);
+  } else {
+    // Local-only mode: read survey state from sync directly
+    chrome.storage.sync.get(['cloudSyncSurvey'], function (r) {
+      checkCloudSyncSurvey(r.cloudSyncSurvey);
+    });
+  }
 }
 
 // Security: Sanitize input to prevent CSV injection and limit length
@@ -387,6 +448,96 @@ function sanitizeInput(input, type = 'text') {
   }
 
   return sanitized;
+}
+
+// Save prompts — writes to sync or local depending on user's storagePref
+function savePrompts(promptsArray, callback) {
+  if (storagePref === 'local') {
+    chrome.storage.local.set({ prompts: promptsArray }, function () {
+      if (callback) callback();
+    });
+    return;
+  }
+
+  // Sync mode: attempt sync, fall back to local on quota error
+  chrome.storage.sync.set({ prompts: promptsArray }, function () {
+    if (chrome.runtime.lastError) {
+      chrome.storage.local.set({ prompts: promptsArray, syncFallback: true }, function () {
+        showSyncFallbackBanner();
+        if (callback) callback();
+      });
+    } else {
+      chrome.storage.local.remove('syncFallback');
+      const banner = document.getElementById('syncFallbackBanner');
+      if (banner) banner.style.display = 'none';
+      if (callback) callback();
+    }
+  });
+}
+
+// Show the sync quota fallback banner
+function showSyncFallbackBanner() {
+  const banner = document.getElementById('syncFallbackBanner');
+  if (banner) banner.style.display = 'block';
+}
+
+// Check if the cloud sync Pro survey should be shown (3+ prompts, not yet seen)
+function checkCloudSyncSurvey(savedSurveyResult) {
+  if (savedSurveyResult && savedSurveyResult.seen) return;
+  if (prompts.length < 3) return;
+  const banner = document.getElementById('cloudSyncSurvey');
+  if (banner) banner.style.display = 'block';
+}
+
+// Dismiss the cloud sync survey permanently
+function dismissSurvey() {
+  const banner = document.getElementById('cloudSyncSurvey');
+  if (banner) banner.style.display = 'none';
+  chrome.storage.sync.set({ cloudSyncSurvey: { seen: true } });
+}
+
+// Update the storage preference radio UI to reflect current storagePref value
+function updateStoragePrefUI() {
+  const syncRadio = document.getElementById('storagePrefSync');
+  const localRadio = document.getElementById('storagePrefLocal');
+  if (syncRadio) syncRadio.checked = storagePref === 'sync';
+  if (localRadio) localRadio.checked = storagePref === 'local';
+
+  // Hide sync fallback banner if user switched to local mode
+  if (storagePref === 'local') {
+    const banner = document.getElementById('syncFallbackBanner');
+    if (banner) banner.style.display = 'none';
+  }
+
+  updateBackupNotice();
+}
+
+// Update the backup notice text to match current storage mode
+function updateBackupNotice() {
+  const notice = document.getElementById('backupNoticeText');
+  if (!notice) return;
+  if (storagePref === 'local') {
+    notice.textContent = 'Your prompts are stored only on this device. Export a CSV backup before removing the extension or resetting Chrome to avoid losing your library.';
+  } else {
+    notice.textContent = 'Your prompts sync across Chrome profiles, but removing the extension from all devices permanently deletes synced data. Export a CSV backup before uninstalling.';
+  }
+}
+
+// Switch storage location and migrate prompts to the new destination
+function setStoragePref(newPref) {
+  if (newPref === storagePref) return;
+  storagePref = newPref;
+  chrome.storage.local.set({ storagePref: newPref });
+  updateStoragePrefUI();
+
+  if (newPref === 'local') {
+    // Moving to local: persist current prompts locally, clear sync copy
+    chrome.storage.local.set({ prompts: prompts, syncFallback: false });
+    chrome.storage.sync.remove('prompts');
+  } else {
+    // Moving to sync: push current prompts to sync (respects quota, shows fallback if needed)
+    savePrompts(prompts);
+  }
 }
 
 // Save a new prompt or update existing one
@@ -489,8 +640,8 @@ function savePromptWithTitle(title, text) {
     prompts.push(promptData);
   }
 
-  // Save to Chrome storage
-  chrome.storage.local.set({ prompts: prompts }, function () {
+  // Save to Chrome storage (sync-first)
+  savePrompts(prompts, function () {
     filterAndSortPrompts();
     hideForm();
   });
@@ -521,6 +672,8 @@ function editPrompt(promptId) {
     document.getElementById('addPromptBtn').textContent = 'Cancel';
     document.getElementById('savePromptBtn').textContent = 'Update';
     document.getElementById('promptForm').style.display = 'block';
+    document.getElementById('promptForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => document.getElementById('promptTitle').focus(), 150);
 
     updateSelectedTagsDisplay();
   }
@@ -530,7 +683,7 @@ function editPrompt(promptId) {
 function deletePrompt(promptId) {
   if (confirm('Are you sure you want to delete this prompt?')) {
     prompts = prompts.filter(p => p.id != promptId);
-    chrome.storage.local.set({ prompts: prompts }, function () {
+    savePrompts(prompts, function () {
       filterAndSortPrompts();
     });
   }
@@ -554,7 +707,7 @@ function toggleFavorite(promptId) {
     prompt.updatedAt = Date.now();
 
     // Save to storage
-    chrome.storage.local.set({ prompts: prompts }, function () {
+    savePrompts(prompts, function () {
       filterAndSortPrompts();
     });
   }
@@ -568,7 +721,7 @@ function toggleSensitivity(promptId) {
     prompt.isSensitive = prompt.isSensitive === false ? true : false;
     prompt.updatedAt = Date.now();
 
-    chrome.storage.local.set({ prompts: prompts }, function () {
+    savePrompts(prompts, function () {
       filterAndSortPrompts();
     });
   }
@@ -813,7 +966,7 @@ function addNewTag() {
   }
 
   availableTags.push({ name: tagName, isDefault: false });
-  chrome.storage.local.set({ availableTags: availableTags }, function () {
+  chrome.storage.sync.set({ availableTags: availableTags }, function () {
     updateTagList();
     updateTagDropdown();
     input.value = '';
@@ -834,10 +987,8 @@ function deleteTag(tagName) {
     });
 
     // Save changes
-    chrome.storage.local.set({
-      availableTags: availableTags,
-      prompts: prompts
-    }, function () {
+    chrome.storage.sync.set({ availableTags: availableTags });
+    savePrompts(prompts, function () {
       updateTagList();
       updateTagDropdown();
       filterAndSortPrompts();
@@ -874,10 +1025,8 @@ function updateTagName(oldName, newName) {
   });
 
   // Save changes
-  chrome.storage.local.set({
-    availableTags: availableTags,
-    prompts: prompts
-  }, function () {
+  chrome.storage.sync.set({ availableTags: availableTags });
+  savePrompts(prompts, function () {
     updateTagDropdown();
     filterAndSortPrompts();
   });
@@ -1080,11 +1229,9 @@ function importPrompts(event) {
         }
       });
 
-      // Save to storage
-      chrome.storage.local.set({
-        prompts: prompts,
-        availableTags: availableTags
-      }, function () {
+      // Save to storage (sync-first)
+      chrome.storage.sync.set({ availableTags: availableTags });
+      savePrompts(prompts, function () {
         filterAndSortPrompts();
         updateTagDropdown();
         showImportStatus(`Successfully imported ${importedCount} prompts`, 'success');
@@ -1175,36 +1322,14 @@ function showImportStatus(message, type = 'info') {
   }, 3000);
 }
 
-// Load filter settings from storage
-function loadFilterSettings() {
-  chrome.storage.local.get(['filterSettings'], function (result) {
-    if (result.filterSettings) {
-      const settings = result.filterSettings;
-
-      // Restore tag filter selection
-      if (settings.tagFilter) {
-        document.getElementById('tagFilter').value = settings.tagFilter;
-      }
-
-      // Restore sort selection
-      if (settings.sortBy) {
-        document.getElementById('sortBy').value = settings.sortBy;
-      }
-
-      // Apply the restored filters and sorting
-      filterAndSortPrompts();
-    }
-  });
-}
-
-// Save filter settings to storage
+// Save filter settings to storage (sync so preferences follow the user)
 function saveFilterSettings() {
   const settings = {
     tagFilter: document.getElementById('tagFilter').value,
     sortBy: document.getElementById('sortBy').value
   };
 
-  chrome.storage.local.set({ filterSettings: settings });
+  chrome.storage.sync.set({ filterSettings: settings });
 }
 
 // Generate a unique title by appending a number

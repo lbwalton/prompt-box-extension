@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Orange background, fills full canvas -->
+  <rect width="128" height="128" rx="20" fill="#F97316"/>
+  <defs>
+    <!-- Bold P: stem 16px wide, bowl radius 24px, total 40x72px -->
+    <path id="p" d="M 0 72 L 16 72 L 16 48 A 24 24 0 1 0 16 0 L 0 0 Z"/>
+  </defs>
+  <!-- Back P — teal, upper-right -->
+  <use href="#p" transform="translate(50, 22)" fill="#0D9488"/>
+  <!-- Front P — white, lower-left -->
+  <use href="#p" transform="translate(38, 34)" fill="white"/>
+</svg>

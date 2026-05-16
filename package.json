@@ -7,12 +7,16 @@
     "zip": "npm run build && cd dist && zip -r ../prompt-box-extension.zip .",
     "lint": "eslint *.js",
     "lint:fix": "eslint *.js --fix",
-    "security": "eslint *.js --config eslint.security.js"
+    "security": "eslint *.js --config eslint.security.js",
+    "icons": "node build-icons.js",
+    "marketing": "node build-marketing.js",
+    "video": "bash build-video.sh"
   },
   "devDependencies": {
-    "fs-extra": "^11.1.1",
     "eslint": "^8.57.0",
+    "eslint-plugin-no-unsanitized": "^4.0.2",
     "eslint-plugin-security": "^2.1.0",
-    "eslint-plugin-no-unsanitized": "^4.0.2"
+    "fs-extra": "^11.1.1",
+    "sharp": "^0.34.5"
   }
 }

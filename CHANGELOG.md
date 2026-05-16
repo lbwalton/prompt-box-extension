@@ -1,5 +1,30 @@
 # Changelog
 
+## [3.2.4] - 2026-05-16
+### Fixed
+- **Text expansion in email composers and other apps that use iframes**: Shortcuts now expand inside web apps that compose mail or messages inside an embedded frame, including many CRM and sales tools layered on top of Gmail. Apps that render their editor inside a closed shadow DOM still may not be reachable.
+
+## [3.2.3] - 2026-04-18
+### Changed
+- **New icon**: Refreshed the extension icon with a bolder design that fills the full toolbar space. The new icon features two overlapping "P" letterforms styled like the copy icon — a nod to the core action of copying prompts — in orange and teal on an orange background.
+
+## [3.2.2] - 2026-04-18
+### Fixed
+- **Text expansion in Gmail and other rich-text editors**: Fixed a "recursive execCommand" warning that could silently block expansion in pages that programmatically fire their own input events (e.g. Google Search, some mail clients).
+
+## [3.2.1] - 2026-04-18
+### Fixed
+- **Text expansion now works for everyone**: Shortcuts saved to Chrome Sync (the default since v3.2.0) were not loaded by the text-expansion engine, so typing a shortcut + Space did nothing. The content script now reads from whichever storage area you've configured.
+- **Text expansion in email, URL, and other input types**: Expansion now works in every text-typable field — including email, URL, tel, number, and search inputs — not just plain text fields and textareas.
+- **Text expansion in Gmail, Notion, and other rich-text editors**: Fixed a bug where browsers convert spaces to non-breaking spaces inside contenteditable fields, which prevented shortcut detection.
+- **Text expansion in editors that programmatically insert text**: Fixed a "recursive execCommand" error that could block expansion in pages that drive their own input events.
+
+## [3.2.0] - 2026-03-21
+### Added
+- **Chrome Sync**: Your prompt library now syncs automatically across all Chrome profiles signed into the same Google account — no account or setup required. If your library is too large for Chrome Sync (100KB limit), a warning banner will appear with a link to export a CSV backup.
+- **Data Loss Warning**: A notice in Settings > Import / Export now reminds you to export a backup before uninstalling or resetting Chrome.
+- **About Panel**: Added a storage note explaining how your data is saved and how to protect it.
+
 ## [3.1.0] - 2026-03-19
 ### Added
 - **Text Expansion / Shortcuts**: Assign a short keyword to any prompt (e.g. `tlb`, `myemail`). Type it anywhere on the web and press Space to instantly expand it to the full prompt text. Works in standard text inputs, textareas, and rich-text editors like Gmail and Notion.

@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- No background — P shapes fill the full icon surface -->
+  <defs>
+    <!-- Bold P: stem 20px, bowl radius 30px → 50px wide, 90px tall -->
+    <path id="p2" d="M 0 90 L 20 90 L 20 60 A 30 30 0 1 0 20 0 L 0 0 Z"/>
+  </defs>
+  <!-- Back P — teal, upper-right -->
+  <use href="#p2" transform="translate(46, 12)" fill="#0D9488"/>
+  <!-- Front P — orange, lower-left (covers overlap area) -->
+  <use href="#p2" transform="translate(32, 26)" fill="#F97316"/>
+</svg>

@@ -1066,6 +1066,77 @@
     }
 
     /* ========================================
+       Tag Combobox (in prompt form)
+       ======================================== */
+    .tag-combobox {
+      position: relative;
+    }
+
+    .tag-combobox-input {
+      width: 100%;
+    }
+
+    .tag-combobox-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      z-index: 100;
+      padding: 4px 0;
+    }
+
+    .tag-combobox-menu[hidden] {
+      display: none;
+    }
+
+    .tag-combobox-option {
+      padding: 6px 10px;
+      font-size: 13px;
+      color: var(--color-text-primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tag-combobox-option:hover,
+    .tag-combobox-option.is-highlighted {
+      background: var(--color-surface-hover);
+    }
+
+    .tag-combobox-option.is-create {
+      color: var(--color-accent);
+      font-weight: 500;
+    }
+
+    .tag-combobox-option.is-create::before {
+      content: "+";
+      font-weight: 700;
+      width: 12px;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .tag-combobox-divider {
+      height: 1px;
+      background: var(--color-border);
+      margin: 4px 0;
+    }
+
+    .tag-combobox-empty {
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--color-text-faint);
+      font-style: italic;
+    }
+
+    /* ========================================
        Shortcut Badge (on prompt cards)
        ======================================== */
     .shortcut-badge {
@@ -1598,15 +1669,19 @@
     <div class="form-group">
       <label>Tags</label>
       <div class="selected-tags" id="selectedTags"></div>
-      <select id="promptCategory">
-        <option value="">Select a tag...</option>
-        <option value="General">General</option>
-        <option value="Writing">Writing</option>
-        <option value="Coding">Coding</option>
-        <option value="Research">Research</option>
-        <option value="Creative">Creative</option>
-        <option value="Business">Business</option>
-      </select>
+      <div class="tag-combobox" id="tagCombobox">
+        <input type="text"
+               id="tagComboboxInput"
+               class="tag-combobox-input"
+               placeholder="Type to search or create a tag…"
+               autocomplete="off"
+               spellcheck="false"
+               role="combobox"
+               aria-expanded="false"
+               aria-autocomplete="list"
+               aria-controls="tagComboboxMenu">
+        <div class="tag-combobox-menu" id="tagComboboxMenu" role="listbox" hidden></div>
+      </div>
     </div>
     <div class="form-group">
       <label>Shortcut <span style="font-weight:400; color: var(--color-text-faint);">(optional)</span></label>

@@ -1107,17 +1107,17 @@ function renderTagComboboxMenu(rawQuery) {
 
   let html = '';
   tagOptions.forEach((opt, i) => {
-    html += `<div class="tag-combobox-option" role="option" data-index="${i}" data-type="tag" data-value="${escapeHTML(opt.value)}">${escapeHTML(opt.value)}</div>`;
+    html += `<div class="tag-combobox-option" role="option" data-index="${i}" data-type="tag">${escapeHTML(opt.value)}</div>`;
   });
   if (createOption) {
     if (tagOptions.length > 0) {
       html += '<div class="tag-combobox-divider"></div>';
     }
     const createIndex = comboboxFilteredOptions.length - 1;
-    html += `<div class="tag-combobox-option is-create" role="option" data-index="${createIndex}" data-type="create" data-value="${escapeHTML(createOption.value)}">Create "${escapeHTML(createOption.value)}"</div>`;
+    html += `<div class="tag-combobox-option is-create" role="option" data-index="${createIndex}" data-type="create">Create "${escapeHTML(createOption.value)}"</div>`;
   }
 
-  // eslint-disable-next-line no-unsanitized/property -- all interpolated values escaped via escapeHTML(); index is a number from controlled loop
+  // eslint-disable-next-line no-unsanitized/property -- only element-content interpolations remain; tag names escaped via escapeHTML(), indices are controlled numbers
   menu.innerHTML = html;
   menu.hidden = false;
 }

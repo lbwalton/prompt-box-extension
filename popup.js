@@ -361,6 +361,9 @@ function hideForm() {
   selectedTags = [];
   editingPromptId = null;
   updateSelectedTagsDisplay();
+  const tagInput = document.getElementById('tagComboboxInput');
+  if (tagInput) tagInput.value = '';
+  if (typeof closeTagComboboxMenu === 'function') closeTagComboboxMenu();
 }
 
 // Load all prompts from Chrome storage, respecting the user's storagePref
@@ -1242,6 +1245,11 @@ function handleTagComboboxKeydown(e) {
       e.preventDefault();
       closeTagComboboxMenu();
       document.getElementById('tagComboboxInput').value = '';
+      break;
+
+    case 'Tab':
+      // Allow default tab-to-next-field; just close the menu.
+      closeTagComboboxMenu();
       break;
   }
 }

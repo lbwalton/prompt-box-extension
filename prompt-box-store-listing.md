@@ -61,7 +61,7 @@ Right-click any selected text on any webpage > "Save to Prompt Box." Capture a g
 Open Prompt Box, click any saved item, and it's on your clipboard. Ready to paste anywhere in one motion.
 
 **Smart Organization**
-Categorize everything with custom tags and built-in categories. Prompts, templates, snippets, expansions — all in one searchable, sortable library.
+Categorize everything with custom tags and built-in categories. Create new tags inline while saving a prompt, or manage them in Settings. Prompts, templates, snippets, expansions, all in one searchable, sortable library.
 
 **Filter & Sort**
 Find exactly what you need by tag, title, date added, or favorites. Zero friction retrieval.

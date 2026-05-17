@@ -1,5 +1,9 @@
 # Changelog
 
+## [3.3.0] - 2026-05-16
+### Added
+- **Create new tags directly from the prompt form.** Type a name in the tag picker and select "Create" to add it to your tag library without opening Settings. The picker also doubles as a search: type to filter existing tags before deciding to add or create one.
+
 ## [3.2.5] - 2026-05-16
 ### Changed
 - **Refreshed accent colors to match the brand mark.** Primary actions are now warm orange, info and success states use a calmer teal — both pulled directly from the toolbar icon — for a more cohesive look between the icon you click and the popup that opens.

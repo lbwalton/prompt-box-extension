@@ -1159,19 +1159,46 @@ function initTagCombobox() {
 function activateTagComboboxOption(option) {
   if (!option) return;
 
-  if (option.type === 'tag') {
-    if (!selectedTags.includes(option.value)) {
-      selectedTags.push(option.value);
-      updateSelectedTagsDisplay();
-    }
-  }
-  // 'create' branch added in Task 5
+  let tagName = null;
 
-  // Clear input, re-render menu (already-selected tag now hidden)
+  if (option.type === 'tag') {
+    tagName = option.value;
+  } else if (option.type === 'create') {
+    tagName = createTagFromCombobox(option.value);
+    if (!tagName) return; // validation failed (empty after sanitize)
+  }
+
+  if (tagName && !selectedTags.includes(tagName)) {
+    selectedTags.push(tagName);
+    updateSelectedTagsDisplay();
+  }
+
   const input = document.getElementById('tagComboboxInput');
   input.value = '';
   renderTagComboboxMenu('');
   input.focus();
+}
+
+// Create a new tag from the combobox input. Persists to availableTags
+// and refreshes all tag surfaces (combobox menu, filter dropdown, settings list if open).
+// Returns the canonical tag name (existing tag name if duplicate, otherwise the new name).
+function createTagFromCombobox(rawName) {
+  const name = sanitizeInput(rawName, 'tag');
+  if (!name) return null;
+
+  // Case-insensitive duplicate check — if it exists, return the existing name
+  const existing = availableTags.find(t => t.name.toLowerCase() === name.toLowerCase());
+  if (existing) return existing.name;
+
+  availableTags.push({ name: name, isDefault: false });
+  chrome.storage.sync.set({ availableTags: availableTags });
+  updateTagFilterDropdown();
+  // If the Settings > Tags panel is currently open, refresh its list too
+  const tagManagement = document.getElementById('tagManagement');
+  if (tagManagement && tagManagement.style.display === 'block') {
+    updateTagList();
+  }
+  return name;
 }
 
 // Handle keyboard navigation and activation in the combobox.

@@ -1144,6 +1144,15 @@ function initTagCombobox() {
   });
 
   input.addEventListener('keydown', handleTagComboboxKeydown);
+
+  // Close on click outside the combobox
+  document.addEventListener('mousedown', function (e) {
+    if (!comboboxOpen) return;
+    const combobox = document.getElementById('tagCombobox');
+    if (combobox && !combobox.contains(e.target)) {
+      closeTagComboboxMenu();
+    }
+  });
 }
 
 // Activate (select or create) a combobox option.
@@ -1167,17 +1176,60 @@ function activateTagComboboxOption(option) {
 
 // Handle keyboard navigation and activation in the combobox.
 function handleTagComboboxKeydown(e) {
-  if (!comboboxOpen) return;
-
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    if (comboboxHighlightIndex >= 0 && comboboxFilteredOptions[comboboxHighlightIndex]) {
-      activateTagComboboxOption(comboboxFilteredOptions[comboboxHighlightIndex]);
-    } else if (comboboxFilteredOptions.length > 0) {
-      // No explicit highlight: activate the first option
-      activateTagComboboxOption(comboboxFilteredOptions[0]);
+  if (!comboboxOpen) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      openTagComboboxMenu();
     }
+    return;
   }
+
+  switch (e.key) {
+    case 'Enter':
+      e.preventDefault();
+      if (comboboxHighlightIndex >= 0 && comboboxFilteredOptions[comboboxHighlightIndex]) {
+        activateTagComboboxOption(comboboxFilteredOptions[comboboxHighlightIndex]);
+      } else if (comboboxFilteredOptions.length > 0) {
+        activateTagComboboxOption(comboboxFilteredOptions[0]);
+      }
+      break;
+
+    case 'ArrowDown':
+      e.preventDefault();
+      if (comboboxFilteredOptions.length === 0) return;
+      comboboxHighlightIndex = (comboboxHighlightIndex + 1) % comboboxFilteredOptions.length;
+      updateComboboxHighlight();
+      break;
+
+    case 'ArrowUp':
+      e.preventDefault();
+      if (comboboxFilteredOptions.length === 0) return;
+      comboboxHighlightIndex =
+        comboboxHighlightIndex <= 0
+          ? comboboxFilteredOptions.length - 1
+          : comboboxHighlightIndex - 1;
+      updateComboboxHighlight();
+      break;
+
+    case 'Escape':
+      e.preventDefault();
+      closeTagComboboxMenu();
+      document.getElementById('tagComboboxInput').value = '';
+      break;
+  }
+}
+
+// Apply the .is-highlighted class to the currently-highlighted row and scroll it into view.
+function updateComboboxHighlight() {
+  const menu = document.getElementById('tagComboboxMenu');
+  menu.querySelectorAll('.tag-combobox-option').forEach((el, i) => {
+    if (i === comboboxHighlightIndex) {
+      el.classList.add('is-highlighted');
+      el.scrollIntoView({ block: 'nearest' });
+    } else {
+      el.classList.remove('is-highlighted');
+    }
+  });
 }
 
 // Update the tag filter dropdown with all available tags

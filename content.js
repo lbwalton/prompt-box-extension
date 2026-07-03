@@ -138,15 +138,23 @@ function verifyAndEscalate(ctx) {
     pbLog('layer', ctx.layer, 'verified OK');
     return;
   }
-  if (ctx.layer >= 2) {
-    pbLog('layer 2 failed, no further fallback yet');
+  if (ctx.layer >= 3) {
+    pbLog('layer 3 reached, chain ends');
     return;
   }
-  ctx.layer = 2;
-  pbLog('escalating to layer 2 (synthetic paste)');
-  const dispatched = ctx.isCE ? runLayer2CE(ctx) : runLayer2Input(ctx);
-  if (dispatched) scheduleVerify(ctx);
-  else pbLog('layer 2 could not run, no further fallback yet');
+  ctx.layer += 1;
+  pbLog('escalating to layer', ctx.layer);
+  if (ctx.layer === 2) {
+    const dispatched = ctx.isCE ? runLayer2CE(ctx) : runLayer2Input(ctx);
+    if (dispatched) {
+      scheduleVerify(ctx);
+    } else {
+      ctx.layer = 3;
+      runLayer3Clipboard(ctx);
+    }
+  } else {
+    runLayer3Clipboard(ctx);
+  }
 }
 
 // Layer 1 for input/textarea: replace via the native value setter so React's
@@ -237,6 +245,126 @@ function dispatchSyntheticPaste(target, text) {
   } catch (err) {
     pbLog('synthetic paste failed:', err);
     return false;
+  }
+}
+
+// ─── Layer 3: clipboard + toast (universal safety net) ──────────────────────
+// If the page blocks both direct replacement and synthetic paste, copy the
+// expansion to the real clipboard and tell the user to paste. Best effort:
+// leave the shortcut text selected so their paste replaces it in one go.
+const TOAST_DISMISS_MS = 5000;
+
+function runLayer3Clipboard(ctx) {
+  try {
+    if (!ctx.isCE) {
+      const val = typeof ctx.el.value === 'string' ? ctx.el.value : '';
+      const current = val.substr(ctx.replaceStart, ctx.shortcut.length);
+      if (current.toLowerCase() === ctx.shortcut.toLowerCase()) {
+        ctx.el.focus();
+        ctx.el.setSelectionRange(ctx.replaceStart, ctx.replaceStart + ctx.shortcut.length);
+      }
+    } else {
+      const found = locateCEShortcut();
+      if (found) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(found.range);
+      }
+    }
+  } catch (err) {
+    pbLog('layer3: could not pre-select shortcut', err);
+  }
+
+  copyToClipboard(ctx.expansion, function (ok) {
+    if (ok) {
+      showToast('Prompt Box: prompt copied. Press ' + pasteKeyLabel() + ' to paste.');
+    } else {
+      showToast('Prompt Box: could not expand here. Open Prompt Box to copy your prompt.');
+    }
+  });
+}
+
+function pasteKeyLabel() {
+  return /Mac|iPhone|iPad|iPod/.test(navigator.platform) ? '⌘V' : 'Ctrl+V';
+}
+
+function copyToClipboard(text, cb) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      function () { cb(true); },
+      function () { cb(legacyCopy(text)); }
+    );
+  } else {
+    cb(legacyCopy(text));
+  }
+}
+
+// Fallback copy path for pages where the async clipboard API is blocked.
+// Steals focus for one tick; restores it afterwards.
+function legacyCopy(text) {
+  const prevActive = document.activeElement;
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.opacity = '0';
+  (document.body || document.documentElement).appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+  ta.remove();
+  if (prevActive && typeof prevActive.focus === 'function') {
+    try { prevActive.focus(); } catch (err) {}
+  }
+  return ok;
+}
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+// Rendered in a CLOSED shadow root on a container appended to
+// document.documentElement, so page CSS can't restyle it and page scripts
+// can't easily reach it. Built with createElement/textContent only.
+let toastHost = null;
+let toastTimer = null;
+
+function showToast(message) {
+  removeToast();
+
+  toastHost = document.createElement('div');
+  const shadow = toastHost.attachShadow({ mode: 'closed' });
+
+  const style = document.createElement('style');
+  style.textContent =
+    '.pb-toast {' +
+    '  position: fixed; bottom: 20px; right: 20px;' +
+    '  background: #1f2937; color: #f9fafb;' +
+    "  font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;" +
+    '  padding: 10px 14px; border-radius: 8px;' +
+    '  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);' +
+    '  z-index: 2147483647; cursor: pointer; max-width: 320px;' +
+    '}';
+
+  const box = document.createElement('div');
+  box.className = 'pb-toast';
+  box.textContent = message;
+  box.addEventListener('click', removeToast);
+
+  shadow.appendChild(style);
+  shadow.appendChild(box);
+  (document.documentElement || document.body).appendChild(toastHost);
+
+  toastTimer = setTimeout(removeToast, TOAST_DISMISS_MS);
+}
+
+function removeToast() {
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+  if (toastHost) {
+    toastHost.remove();
+    toastHost = null;
   }
 }
 

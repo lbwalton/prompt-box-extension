@@ -6,7 +6,8 @@
   "permissions": [
     "storage",
     "activeTab",
-    "contextMenus"
+    "contextMenus",
+    "clipboardWrite"
   ],
   "content_scripts": [
     {

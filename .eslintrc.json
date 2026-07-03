@@ -1,0 +1,32 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "webextensions": true,
+    "node": true
+  },
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "script"
+  },
+  "extends": ["eslint:recommended"],
+  "plugins": [
+    "no-unsanitized"
+  ],
+  "rules": {
+    "no-console": "warn",
+    "no-unused-vars": "warn",
+    "no-empty": "off",
+    "no-case-declarations": "off",
+    "no-useless-escape": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["build.js", "build-*.js", "eslint.security.js"],
+      "env": {
+        "node": true,
+        "browser": false
+      }
+    }
+  ]
+}

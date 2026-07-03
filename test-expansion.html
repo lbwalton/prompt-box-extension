@@ -2,178 +2,110 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Prompt Box — Text Expansion Test Page</title>
+<title>Prompt Box — Expansion Test Page</title>
 <style>
-  body {
-    font-family: -apple-system, system-ui, sans-serif;
-    max-width: 900px;
-    margin: 24px auto;
-    padding: 0 20px;
-    background: #f5f5f5;
-    color: #111;
-  }
-  h1 { margin-bottom: 4px; }
-  p.sub { color: #666; margin-top: 0; }
-  .field {
-    background: #fff;
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
-  }
-  .field label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 6px;
-    font-size: 13px;
-    color: #444;
-  }
-  .field .hint { color: #888; font-size: 12px; margin-bottom: 8px; }
-  input, textarea, .ce {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-  }
-  textarea { min-height: 80px; resize: vertical; }
-  .ce { min-height: 50px; background: #fff; }
-  #logs {
-    position: fixed;
-    right: 12px;
-    bottom: 12px;
-    width: 380px;
-    height: 320px;
-    background: #111;
-    color: #d0ffd0;
-    font-family: monospace;
-    font-size: 11px;
-    padding: 8px;
-    border-radius: 8px;
-    overflow-y: auto;
-    box-shadow: 0 4px 12px rgba(0,0,0,.3);
-  }
-  #logs h3 {
-    margin: 0 0 6px;
-    font-size: 12px;
-    color: #fff;
-    display: flex;
-    justify-content: space-between;
-  }
-  #logs button {
-    background: #333;
-    color: #fff;
-    border: 0;
-    padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 10px;
-    cursor: pointer;
-  }
-  .log-line { white-space: pre-wrap; word-break: break-all; }
-  .log-line.warn { color: #ffd070; }
-  .log-line.err { color: #ff8080; }
-  .status {
-    background: #fffbe6;
-    border: 1px solid #f0c060;
-    padding: 12px;
-    border-radius: 6px;
-    margin-bottom: 18px;
-    font-size: 13px;
-  }
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; }
+  section { margin-bottom: 28px; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+  h2 { margin: 0 0 4px; font-size: 16px; }
+  p.hint { margin: 0 0 10px; color: #666; font-size: 13px; }
+  input, textarea { width: 100%; box-sizing: border-box; font-size: 14px; padding: 8px; }
+  textarea { min-height: 70px; }
+  [contenteditable] { border: 1px solid #bbb; border-radius: 4px; min-height: 60px; padding: 8px; }
+  .expected { display: inline-block; font-size: 12px; background: #eef; border-radius: 4px; padding: 2px 8px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
+<h1>Prompt Box Expansion Test Page</h1>
+<p>Setup: create a prompt with shortcut <code>xtest</code> in the extension first.
+In each field, type <code>xtest</code> followed by the trigger key named in the section.</p>
 
-<h1>Prompt Box — Text Expansion Test</h1>
-<p class="sub">Type one of your shortcuts followed by a space in any field below.
-Watch the log panel (bottom right) to see what the content script does.</p>
+<section>
+  <h2>Plain input</h2>
+  <span class="expected">Expected: Layer 1, triggers: Space, Tab, Enter</span>
+  <p class="hint">Enter is prevented from submitting here so you can inspect the value.</p>
+  <form onsubmit="return false"><input type="text" id="plain" placeholder="type xtest then Space / Tab / Enter"></form>
+</section>
 
-<div class="status">
-  <strong>Setup:</strong>
-  1) Reload the extension at <code>chrome://extensions/</code> →
-  2) Add a prompt with shortcut <code>tlb</code> (or use an existing shortcut) →
-  3) Open this page → DevTools console (F12) → type your shortcut + space in each field.
-</div>
+<section>
+  <h2>Email input</h2>
+  <span class="expected">Expected: Layer 1, triggers: Tab, Enter (like a sign-in box)</span>
+  <form onsubmit="return false"><input type="email" id="email" placeholder="type xtest then Tab"></form>
+</section>
 
-<div class="field">
-  <label>1. Plain text input</label>
-  <div class="hint">Standard <code>&lt;input type="text"&gt;</code></div>
-  <input type="text" placeholder="Type shortcut here, then space...">
-</div>
+<section>
+  <h2>Textarea</h2>
+  <span class="expected">Expected: Layer 1, triggers: Space, Tab, Enter</span>
+  <textarea id="ta" placeholder="type xtest then Space"></textarea>
+</section>
 
-<div class="field">
-  <label>2. Search input (Bing-style)</label>
-  <div class="hint">Standard <code>&lt;input type="search"&gt;</code></div>
-  <input type="search" placeholder="Type shortcut here, then space...">
-</div>
+<section>
+  <h2>Contenteditable</h2>
+  <span class="expected">Expected: Layer 1 (execCommand), trigger: Space only</span>
+  <div contenteditable="true" id="ce"></div>
+</section>
 
-<div class="field">
-  <label>3. Textarea</label>
-  <div class="hint">Standard <code>&lt;textarea&gt;</code></div>
-  <textarea placeholder="Type shortcut here, then space..."></textarea>
-</div>
+<section>
+  <h2>Shadow DOM input</h2>
+  <span class="expected">Expected: Layer 1 after shadow fix, triggers: Space, Tab, Enter</span>
+  <div id="shadow-host"></div>
+</section>
 
-<div class="field">
-  <label>4. Contenteditable div (Gmail-style)</label>
-  <div class="hint"><code>&lt;div contenteditable="true"&gt;</code></div>
-  <div class="ce" contenteditable="true"></div>
-</div>
+<section>
+  <h2>Stubborn input (paste-aware)</h2>
+  <span class="expected">Expected: Layer 2 (synthetic paste)</span>
+  <p class="hint">Reverts any untrusted value change (simulates a framework), but honors paste events.</p>
+  <form onsubmit="return false"><input type="text" id="stubborn" placeholder="type xtest then Space"></form>
+</section>
 
-<div class="field">
-  <label>5. React-style controlled input</label>
-  <div class="hint">Mimics a controlled component that resets value on every input event. If expansion still works here, the fix is robust against reactive frameworks.</div>
-  <input type="text" id="reactish" placeholder="Type shortcut here, then space...">
-</div>
-
-<div id="logs">
-  <h3>Console mirror <button onclick="document.getElementById('loglines').innerHTML=''">clear</button></h3>
-  <div id="loglines"></div>
-</div>
+<section>
+  <h2>Locked input (Layer 3)</h2>
+  <span class="expected">Expected: Layer 3 (clipboard + toast)</span>
+  <p class="hint">Reverts untrusted value changes AND swallows paste events.</p>
+  <form onsubmit="return false"><input type="text" id="locked" placeholder="type xtest then Space"></form>
+</section>
 
 <script>
-  // Mirror console.log entries that start with [PromptBox] into the on-page panel
-  const linesEl = document.getElementById('loglines');
-  const origLog = console.log;
-  console.log = function() {
-    origLog.apply(console, arguments);
-    const args = Array.from(arguments);
-    if (args[0] !== '[PromptBox]') return;
-    const line = args.slice(1).map(a =>
-      typeof a === 'object' ? JSON.stringify(a) : String(a)
-    ).join(' ');
-    const div = document.createElement('div');
-    div.className = 'log-line';
-    div.textContent = '› ' + line;
-    linesEl.appendChild(div);
-    linesEl.scrollTop = linesEl.scrollHeight;
-  };
+// Shadow DOM input
+(function () {
+  const host = document.getElementById('shadow-host');
+  const root = host.attachShadow({ mode: 'open' });
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'inside an open shadow root: type xtest then Space';
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+  input.style.fontSize = '14px';
+  input.style.padding = '8px';
+  root.appendChild(input);
+})();
 
-  // React-style controlled input simulation:
-  // every native input event re-asserts the previous "state" value, then
-  // updates state from the event. If our expansion didn't update state, the
-  // value would be reset to the unexpanded text on the NEXT input event.
-  // This catches bugs where we set the DOM value but the framework overrides it.
-  (function () {
-    const el = document.getElementById('reactish');
-    let state = '';
-    el.addEventListener('input', function (e) {
-      // Simulate React's onChange + render cycle
-      state = el.value;
-      // Force a re-render on next microtask (like React's batched updates)
-      Promise.resolve().then(() => {
-        if (el.value !== state) {
-          console.log('[PromptBox]', 'reactish: resetting value from',
-            JSON.stringify(el.value), 'to', JSON.stringify(state));
-          el.value = state;
-        }
-      });
+// Framework-style revert: snapshot value on trusted keystrokes; when an
+// untrusted input event changes the value, restore the snapshot.
+function makeStubborn(el, opts) {
+  let lastTrusted = '';
+  el.addEventListener('keydown', function () {
+    setTimeout(function () { lastTrusted = el.value; }, 0);
+  });
+  el.addEventListener('input', function (e) {
+    if (e.isTrusted) { lastTrusted = el.value; return; }
+    // revert programmatic writes, like a controlled React input would
+    el.value = lastTrusted;
+  });
+  if (opts.acceptPaste) {
+    el.addEventListener('paste', function (e) {
+      e.preventDefault();
+      const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+      const start = el.selectionStart == null ? el.value.length : el.selectionStart;
+      const end = el.selectionEnd == null ? el.value.length : el.selectionEnd;
+      el.value = el.value.slice(0, start) + text + el.value.slice(end);
+      lastTrusted = el.value;
     });
-  })();
-
-  console.log('[PromptBox]', 'test page loaded. waiting for input...');
+  } else {
+    el.addEventListener('paste', function (e) { e.preventDefault(); });
+  }
+}
+makeStubborn(document.getElementById('stubborn'), { acceptPaste: true });
+makeStubborn(document.getElementById('locked'), { acceptPaste: false });
 </script>
-
 </body>
 </html>

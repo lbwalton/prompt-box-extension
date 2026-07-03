@@ -75,6 +75,17 @@ function isContentEditable(el) {
     (el.closest && !!el.closest('[contenteditable="true"]'));
 }
 
+// Resolve the real event target. For events originating inside an OPEN
+// shadow root, e.target is the shadow host; composedPath()[0] is the actual
+// element the user typed into. Closed shadow roots stay unreachable.
+function resolveTarget(e) {
+  if (typeof e.composedPath === 'function') {
+    const path = e.composedPath();
+    if (path && path.length) return path[0];
+  }
+  return e.target;
+}
+
 // ─── Shortcut lookup ──────────────────────────────────────────────────────────
 // Find a shortcut at the END of the given text. Shortcut must be at start of
 // string or preceded by whitespace. Returns the shortcut string or null.
@@ -95,7 +106,7 @@ window.addEventListener('keydown', function (e) {
   // Skip if a composition (IME) is active
   if (e.isComposing || e.keyCode === 229) return;
 
-  const el = e.target;
+  const el = resolveTarget(e);
 
   // Contenteditable handled by input listener below
   if (isContentEditable(el)) return;
@@ -162,7 +173,7 @@ document.addEventListener('input', function (e) {
   // Match space (U+0020) or non-breaking space (U+00A0) — contenteditable
   // editors sometimes substitute NBSP for regular space.
   if (e.data !== ' ' && e.data !== '\u00A0') return;
-  const el = e.target;
+  const el = resolveTarget(e);
   if (!isContentEditable(el)) return;
 
   pbLog('input event in contenteditable on', el.tagName, 'data charCode=', e.data.charCodeAt(0));

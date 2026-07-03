@@ -104,10 +104,12 @@ function findShortcutAtEnd(text) {
 //   Layer 3  clipboard + toast (copy + "press paste" reminder)
 const VERIFY_DELAY_MS = 100;
 
-// Collapse whitespace runs so NBSP substitution and newline-to-<br>
-// conversion inside editors don't cause false verification failures.
-function normalizeWS(s) {
-  return s.replace(/\s+/g, ' ');
+// Compare with ALL whitespace stripped: contenteditable renders newlines as
+// <br> or block splits that vanish entirely from textContent, and editors
+// swap regular spaces for NBSP, so any whitespace-sensitive compare would
+// false-fail on multi-line expansions.
+function stripWS(s) {
+  return s.replace(/\s+/g, '');
 }
 
 function ceRoot(el) {
@@ -126,7 +128,9 @@ function expansionStuck(ctx) {
   const haystack = ctx.isCE
     ? (ceRoot(el).textContent || '')
     : (typeof el.value === 'string' ? el.value : '');
-  return normalizeWS(haystack).indexOf(normalizeWS(ctx.expansion)) !== -1;
+  const needle = stripWS(ctx.expansion);
+  if (!needle) return true; // all-whitespace expansion: nothing to verify
+  return stripWS(haystack).indexOf(needle) !== -1;
 }
 
 function scheduleVerify(ctx) {
@@ -145,12 +149,25 @@ function verifyAndEscalate(ctx) {
   ctx.layer += 1;
   pbLog('escalating to layer', ctx.layer);
   if (ctx.layer === 2) {
-    const dispatched = ctx.isCE ? runLayer2CE(ctx) : runLayer2Input(ctx);
-    if (dispatched) {
-      scheduleVerify(ctx);
+    if (ctx.isCE) {
+      // For contenteditable, a missing shortcut at the caret is the designed
+      // clipboard path (canvas editors like Google Docs never let Layer 1
+      // touch the text at all), so any Layer 2 failure falls through.
+      if (runLayer2CE(ctx)) {
+        scheduleVerify(ctx);
+      } else {
+        ctx.layer = 3;
+        runLayer3Clipboard(ctx);
+      }
     } else {
-      ctx.layer = 3;
-      runLayer3Clipboard(ctx);
+      const result = runLayer2Input(ctx);
+      if (result === 'dispatched') {
+        scheduleVerify(ctx);
+      } else if (result === 'failed') {
+        ctx.layer = 3;
+        runLayer3Clipboard(ctx);
+      }
+      // 'consumed': chain ends, the page already used the expanded value
     }
   } else {
     runLayer3Clipboard(ctx);
@@ -185,15 +202,19 @@ function runLayer1Input(ctx, cursor) {
 
 // Layer 2 for input/textarea: select the shortcut text, then hand the
 // insertion to the page's own paste handling via a synthetic paste event.
-// Only runs if the shortcut text is verifiably still in place, so we can
-// never double-insert.
+// Returns 'dispatched' | 'consumed' | 'failed'. Only runs the paste when the
+// shortcut text is verifiably still in place, so we can never double-insert.
 function runLayer2Input(ctx) {
   const el = ctx.el;
   const val = typeof el.value === 'string' ? el.value : '';
   const current = val.substr(ctx.replaceStart, ctx.shortcut.length);
   if (current.toLowerCase() !== ctx.shortcut.toLowerCase()) {
-    pbLog('layer2 input: shortcut no longer at expected position');
-    return false;
+    // Shortcut gone and expansion not present: the page consumed or replaced
+    // the value (chat sent on Enter, autocomplete committed on Tab). End the
+    // chain — pasting or toasting now would fight the page over text the
+    // user already used.
+    pbLog('layer2 input: shortcut no longer at expected position, chain ends');
+    return 'consumed';
   }
   try {
     el.focus();
@@ -201,9 +222,9 @@ function runLayer2Input(ctx) {
   } catch (err) {
     // email/number inputs throw on setSelectionRange
     pbLog('layer2 input: selection not supported', err);
-    return false;
+    return 'failed';
   }
-  return dispatchSyntheticPaste(el, ctx.expansion);
+  return dispatchSyntheticPaste(el, ctx.expansion) ? 'dispatched' : 'failed';
 }
 
 // Layer 2 for contenteditable: re-locate the shortcut at the caret (the DOM

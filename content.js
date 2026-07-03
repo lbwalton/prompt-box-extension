@@ -101,7 +101,7 @@ function findShortcutAtEnd(text) {
 // If the text didn't stick (framework reverted it), we escalate:
 //   Layer 1  direct replacement (native setter / execCommand)
 //   Layer 2  synthetic paste event (rich editors handle paste themselves)
-//   Layer 3  clipboard + toast (added in a later change)
+//   Layer 3  clipboard + toast (copy + "press paste" reminder)
 const VERIFY_DELAY_MS = 100;
 
 // Collapse whitespace runs so NBSP substitution and newline-to-<br>
@@ -276,10 +276,14 @@ function runLayer3Clipboard(ctx) {
   }
 
   copyToClipboard(ctx.expansion, function (ok) {
-    if (ok) {
-      showToast('Prompt Box: prompt copied. Press ' + pasteKeyLabel() + ' to paste.');
-    } else {
-      showToast('Prompt Box: could not expand here. Open Prompt Box to copy your prompt.');
+    try {
+      if (ok) {
+        showToast('Prompt Box: prompt copied. Press ' + pasteKeyLabel() + ' to paste.');
+      } else {
+        showToast('Prompt Box: could not expand here. Open Prompt Box to copy your prompt.');
+      }
+    } catch (err) {
+      pbLog('toast failed:', err);
     }
   });
 }
@@ -289,14 +293,18 @@ function pasteKeyLabel() {
 }
 
 function copyToClipboard(text, cb) {
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(
-      function () { cb(true); },
-      function () { cb(legacyCopy(text)); }
-    );
-  } else {
-    cb(legacyCopy(text));
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        function () { cb(true); },
+        function () { cb(legacyCopy(text)); }
+      );
+      return;
+    }
+  } catch (err) {
+    pbLog('async clipboard write threw:', err);
   }
+  cb(legacyCopy(text));
 }
 
 // Fallback copy path for pages where the async clipboard API is blocked.
@@ -377,10 +385,11 @@ function removeToast() {
 const TRIGGER_KEYS = new Set([' ', 'Tab', 'Enter']);
 
 // ─── KEYDOWN PATH (input / textarea) ─────────────────────────────────────────
-// Fires BEFORE the space is inserted. We preventDefault and do the
-// replacement ourselves, so we never race with framework re-renders.
-// Registered on window+capture so we run before any page-level handlers,
-// regardless of when their script loaded relative to this content script.
+// Fires BEFORE the trigger key lands. On Space we preventDefault and replace
+// the shortcut ourselves; on Tab/Enter we replace synchronously and let the
+// default action proceed with the expanded value. Registered on window+capture
+// so we run before any page-level handlers, regardless of when their script
+// loaded relative to this content script.
 window.addEventListener('keydown', function (e) {
   if (!TRIGGER_KEYS.has(e.key) || e.ctrlKey || e.metaKey || e.altKey) return;
   // Skip if a composition (IME) is active

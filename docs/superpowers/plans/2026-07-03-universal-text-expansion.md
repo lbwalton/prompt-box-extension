@@ -1017,6 +1017,7 @@ Confirm the `xtest` prompt exists, then work through each surface. Record result
 | 11 | Any password field | `xtest` + Space | NO expansion, ever |
 | 12 | Plain input, IME active (e.g. Japanese input source) | type shortcut during composition | NO expansion mid-composition |
 | 13 | Dark-mode site (e.g. github.com dark) | force a Layer 3 toast via test page in a dark-mode themed OS | toast readable |
+| 14 | ChatGPT or Claude.ai composer, MULTI-LINE prompt (create shortcut xmulti with a 3-line expansion) | xmulti + Space | full multi-line expansion appears, NO toast, clipboard untouched |
 
 Skip rows for services with no available login rather than failing them; note skips in the report.
 

@@ -52,7 +52,7 @@ Type the trigger. Blink. Done.
 ### ✨ Full Feature Set
 
 **Text Expansion**
-Assign short trigger keywords to any saved snippet. Type a shortcut and press Space, Tab, or Enter to expand it into your full prompt in any text field. On sites that block expansion, Prompt Box copies the prompt to your clipboard and shows a reminder so you can paste it in one keystroke. Works in Gmail, LinkedIn, ChatGPT, Notion, Slack, Google Docs — everywhere you type.
+Assign short trigger keywords to any saved snippet. Type a shortcut and press Space, Tab, or Enter to expand it into your full prompt in any text field. On sites that block expansion, Prompt Box copies the prompt to your clipboard and shows a reminder so you can paste it in one keystroke. Works everywhere you type, including Gmail, LinkedIn, ChatGPT, Notion, Slack, and Google Docs.
 
 **Quick Save**
 Right-click any selected text on any webpage > "Save to Prompt Box." Capture a great AI prompt, a useful template, a code snippet — without breaking your flow.

@@ -28,7 +28,11 @@
     },
     {
       "files": ["popup.js", "content.js"],
-      "plugins": ["no-unsanitized"]
+      "plugins": ["no-unsanitized"],
+      "rules": {
+        "no-unsanitized/method": "error",
+        "no-unsanitized/property": "error"
+      }
     }
   ]
 }

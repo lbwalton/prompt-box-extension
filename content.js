@@ -96,6 +96,150 @@ function findShortcutAtEnd(text) {
   return shortcuts[word] ? match[1] : null;
 }
 
+// ─── Expansion engine: layered attempts + verification ──────────────────────
+// Every expansion attempt builds a ctx and is verified VERIFY_DELAY_MS later.
+// If the text didn't stick (framework reverted it), we escalate:
+//   Layer 1  direct replacement (native setter / execCommand)
+//   Layer 2  synthetic paste event (rich editors handle paste themselves)
+//   Layer 3  clipboard + toast (added in a later change)
+const VERIFY_DELAY_MS = 100;
+
+// Collapse whitespace runs so NBSP substitution and newline-to-<br>
+// conversion inside editors don't cause false verification failures.
+function normalizeWS(s) {
+  return s.replace(/\s+/g, ' ');
+}
+
+function ceRoot(el) {
+  if (el && el.closest) {
+    const root = el.closest('[contenteditable="true"]');
+    if (root) return root;
+  }
+  return el;
+}
+
+function expansionStuck(ctx) {
+  const el = ctx.el;
+  // Element gone from the DOM: an Enter-triggered submit/navigation already
+  // consumed the expanded value. Treat as success.
+  if (!el || !el.isConnected) return true;
+  const haystack = ctx.isCE
+    ? (ceRoot(el).textContent || '')
+    : (typeof el.value === 'string' ? el.value : '');
+  return normalizeWS(haystack).indexOf(normalizeWS(ctx.expansion)) !== -1;
+}
+
+function scheduleVerify(ctx) {
+  setTimeout(function () { verifyAndEscalate(ctx); }, VERIFY_DELAY_MS);
+}
+
+function verifyAndEscalate(ctx) {
+  if (expansionStuck(ctx)) {
+    pbLog('layer', ctx.layer, 'verified OK');
+    return;
+  }
+  if (ctx.layer >= 2) {
+    pbLog('layer 2 failed, no further fallback yet');
+    return;
+  }
+  ctx.layer = 2;
+  pbLog('escalating to layer 2 (synthetic paste)');
+  const dispatched = ctx.isCE ? runLayer2CE(ctx) : runLayer2Input(ctx);
+  if (dispatched) scheduleVerify(ctx);
+  else pbLog('layer 2 could not run, no further fallback yet');
+}
+
+// Layer 1 for input/textarea: replace via the native value setter so React's
+// internal value tracking registers the change.
+function runLayer1Input(ctx, cursor) {
+  const el = ctx.el;
+  const newValue =
+    el.value.substring(0, ctx.replaceStart) +
+    ctx.expansion +
+    el.value.substring(cursor);
+
+  const proto = el.tagName.toLowerCase() === 'textarea'
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+  if (descriptor && descriptor.set) {
+    descriptor.set.call(el, newValue);
+  } else {
+    el.value = newValue;
+  }
+
+  const newCursor = ctx.replaceStart + ctx.expansion.length;
+  try { el.setSelectionRange(newCursor, newCursor); } catch (err) {}
+
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+// Layer 2 for input/textarea: select the shortcut text, then hand the
+// insertion to the page's own paste handling via a synthetic paste event.
+// Only runs if the shortcut text is verifiably still in place, so we can
+// never double-insert.
+function runLayer2Input(ctx) {
+  const el = ctx.el;
+  const val = typeof el.value === 'string' ? el.value : '';
+  const current = val.substr(ctx.replaceStart, ctx.shortcut.length);
+  if (current.toLowerCase() !== ctx.shortcut.toLowerCase()) {
+    pbLog('layer2 input: shortcut no longer at expected position');
+    return false;
+  }
+  try {
+    el.focus();
+    el.setSelectionRange(ctx.replaceStart, ctx.replaceStart + ctx.shortcut.length);
+  } catch (err) {
+    // email/number inputs throw on setSelectionRange
+    pbLog('layer2 input: selection not supported', err);
+    return false;
+  }
+  return dispatchSyntheticPaste(el, ctx.expansion);
+}
+
+// Layer 2 for contenteditable: re-locate the shortcut at the caret (the DOM
+// may have re-rendered since Layer 1), select it, dispatch synthetic paste.
+function runLayer2CE(ctx) {
+  const found = locateCEShortcut();
+  if (!found) {
+    pbLog('layer2 CE: shortcut not found at caret');
+    return false;
+  }
+  try {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(found.range);
+  } catch (err) {
+    pbLog('layer2 CE: could not select range', err);
+    return false;
+  }
+  return dispatchSyntheticPaste(ceRoot(ctx.el), ctx.expansion);
+}
+
+// Synthetic paste: a ClipboardEvent carrying the expansion in DataTransfer.
+// Untrusted events don't trigger the browser's default paste action, but
+// rich editors (Lexical, ProseMirror, Quill) implement paste in JS and
+// accept them. The user's real clipboard is never touched here.
+// Note: we have no paste listeners of our own, and any input events the
+// editor fires from this have e.data !== ' ', so our listeners ignore them.
+function dispatchSyntheticPaste(target, text) {
+  try {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', text);
+    const evt = new ClipboardEvent('paste', {
+      clipboardData: dt,
+      bubbles: true,
+      cancelable: true
+    });
+    target.dispatchEvent(evt);
+    return true;
+  } catch (err) {
+    pbLog('synthetic paste failed:', err);
+    return false;
+  }
+}
+
 // Keys that trigger expansion in input/textarea. Space is consumed (the
 // expansion replaces shortcut + swallows the space, as before). Tab and
 // Enter are NOT prevented: the value is expanded synchronously in capture
@@ -137,39 +281,21 @@ window.addEventListener('keydown', function (e) {
   if (!shortcut) return;
 
   const expansion = shortcuts[shortcut.toLowerCase()];
-  pbLog('keydown match:', shortcut, '→', expansion.length, 'chars on', el.tagName, el.type);
+  pbLog('keydown match:', shortcut, 'via key', JSON.stringify(e.key));
 
   // Only Space is consumed. Tab/Enter keep their default action.
   if (e.key === ' ') e.preventDefault();
 
-  const replaceStart = cursor - shortcut.length;
-  const newValue =
-    el.value.substring(0, replaceStart) +
-    expansion +
-    el.value.substring(cursor);
-
-  // Native setter so React's _valueTracker registers the change
-  const proto = el.tagName.toLowerCase() === 'textarea'
-    ? window.HTMLTextAreaElement.prototype
-    : window.HTMLInputElement.prototype;
-  const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
-  if (descriptor && descriptor.set) {
-    descriptor.set.call(el, newValue);
-  } else {
-    el.value = newValue;
-  }
-
-  const newCursor = replaceStart + expansion.length;
-  try { el.setSelectionRange(newCursor, newCursor); } catch (err) {}
-
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.dispatchEvent(new Event('change', { bubbles: true }));
-
-  // Sanity check: did the value stick?
-  setTimeout(function () {
-    pbLog('post-expansion check, value matches?', el.value === newValue,
-      'len:', el.value.length);
-  }, 50);
+  const ctx = {
+    el: el,
+    isCE: false,
+    shortcut: shortcut,
+    expansion: expansion,
+    replaceStart: cursor - shortcut.length,
+    layer: 1
+  };
+  runLayer1Input(ctx, cursor);
+  scheduleVerify(ctx);
 }, true); // capture so we run before page handlers
 
 // ─── INPUT EVENT PATH (contenteditable) ──────────────────────────────────────
@@ -189,17 +315,21 @@ document.addEventListener('input', function (e) {
   tryExpandContentEditable();
 }, false);
 
-function tryExpandContentEditable() {
+// Locate a shortcut + trailing space immediately before the caret in a
+// contenteditable. Returns { range, shortcut, expansion } or null.
+// \s matches both regular space (U+0020) and the non-breaking space
+// (U+00A0) that contenteditable editors often insert.
+function locateCEShortcut() {
   const selection = window.getSelection();
   if (!selection || !selection.rangeCount) {
     pbLog('  ce bail: no selection');
-    return;
+    return null;
   }
 
   const range = selection.getRangeAt(0);
   if (!range.collapsed) {
     pbLog('  ce bail: range not collapsed');
-    return;
+    return null;
   }
 
   const container = range.startContainer;
@@ -209,39 +339,21 @@ function tryExpandContentEditable() {
   if (container.nodeType === Node.TEXT_NODE) {
     textBefore = container.textContent.substring(0, range.startOffset);
     startNode = container;
-    pbLog('  ce text node case, offset=', range.startOffset,
-      'textBefore=', JSON.stringify(textBefore.slice(-30)));
   } else {
     const prevChild = container.childNodes[range.startOffset - 1];
     if (!prevChild || prevChild.nodeType !== Node.TEXT_NODE) {
-      pbLog('  ce bail: container not text node, prevChild not text', {
-        containerType: container.nodeType,
-        prevChildType: prevChild && prevChild.nodeType
-      });
-      return;
+      pbLog('  ce bail: container not text node, prevChild not text');
+      return null;
     }
     textBefore = prevChild.textContent;
     startNode = prevChild;
-    pbLog('  ce element case, prevChild text=', JSON.stringify(textBefore.slice(-30)));
   }
 
-  // Match shortcut + trailing whitespace at the end.
-  // \s matches both regular space (U+0020) and the non-breaking space
-  // (U+00A0) that contenteditable editors often insert.
   const match = textBefore.match(/(?:^|\s)(\S+)\s$/);
-  if (!match) {
-    pbLog('  ce bail: regex no match for', JSON.stringify(textBefore.slice(-30)));
-    return;
-  }
+  if (!match) return null;
   const word = match[1].toLowerCase();
   const expansion = shortcuts[word];
-  if (!expansion) {
-    pbLog('  ce bail: no shortcut for word', JSON.stringify(word),
-      'available:', Object.keys(shortcuts));
-    return;
-  }
-
-  pbLog('contenteditable match:', match[1], '→', expansion.length, 'chars');
+  if (!expansion) return null;
 
   const shortcutWithSpace = match[1] + ' ';
   const nodeTextOffset = startNode === container
@@ -249,14 +361,34 @@ function tryExpandContentEditable() {
     : startNode.textContent.length;
 
   const deleteFrom = nodeTextOffset - shortcutWithSpace.length;
-  if (deleteFrom < 0) return;
+  if (deleteFrom < 0) return null;
 
   const replaceRange = document.createRange();
   replaceRange.setStart(startNode, deleteFrom);
-  replaceRange.setEnd(
-    range.startContainer,
-    startNode === container ? range.startOffset : range.startOffset
-  );
+  replaceRange.setEnd(range.startContainer, range.startOffset);
+
+  return { range: replaceRange, shortcut: match[1], expansion: expansion };
+}
+
+function tryExpandContentEditable() {
+  const found = locateCEShortcut();
+  if (!found) return;
+
+  pbLog('contenteditable match:', found.shortcut, '→', found.expansion.length, 'chars');
+
+  const startContainer = found.range.startContainer;
+  const anchorEl = startContainer.nodeType === Node.TEXT_NODE
+    ? startContainer.parentElement
+    : startContainer;
+
+  const ctx = {
+    el: ceRoot(anchorEl),
+    isCE: true,
+    shortcut: found.shortcut,
+    expansion: found.expansion,
+    replaceStart: -1,
+    layer: 1
+  };
 
   // Defer to next macrotask. Chrome blocks execCommand if it's called
   // recursively from within an input event triggered by another execCommand
@@ -267,12 +399,12 @@ function tryExpandContentEditable() {
     try {
       const sel = window.getSelection();
       sel.removeAllRanges();
-      sel.addRange(replaceRange);
-      const ok = document.execCommand('insertText', false, expansion);
-      pbLog('  ce execCommand returned', ok, 'after-text=',
-        JSON.stringify(startNode.textContent.slice(0, 60)));
+      sel.addRange(found.range);
+      const ok = document.execCommand('insertText', false, found.expansion);
+      pbLog('  ce execCommand returned', ok);
     } finally {
       ceExpanding = false;
     }
+    scheduleVerify(ctx);
   }, 0);
 }

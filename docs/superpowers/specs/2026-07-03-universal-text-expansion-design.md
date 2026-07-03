@@ -127,3 +127,13 @@ Also verify: IME composition unaffected, password fields never expand, dark mode
 2. Version 3.4.0 in manifest.json, popup.html `#appVersion`, CHANGELOG.md entry.
 3. Store listing and privacy practices docs updated (clipboardWrite), Gist updated.
 4. Manual matrix above passes.
+
+## Post-Implementation Findings (2026-07-03, live browser testing)
+
+Verified working (v3.4.0 + match_about_blank): plain inputs, email inputs with Tab, search bars with Enter (Google, Bing including form submit), open shadow DOM inputs, contenteditable editors (X, ChatGPT, Claude.ai), React-style reverting fields via Layer 2 synthetic paste, and the Layer 3 clipboard + toast on fully locked fields. LinkedIn plain fields (search, sign-in) work.
+
+Corrections to this spec's assumptions:
+
+1. **Google Docs cannot trigger any layer, including the toast.** Docs routes typing through a hidden about:blank iframe whose contenteditable receives keydown events only; Docs prevents the default so no `input` event ever fires, and characters go straight to its canvas engine. `match_about_blank: true` (added to the manifest) injects our script there, but the input-event trigger for contenteditable never fires. The "Layer 3 toast is the designed answer" line in Out of Scope was wrong: no trigger, no toast. Docs support requires a keydown-driven keystroke buffer (3.5.0 candidate).
+2. **LinkedIn's post composer uses a shadow-DOM editing surface** in the top document (events retarget to a non-editable host; `window.getSelection()` returns an element-level range that defeats shortcut location). The composer silently never starts the chain. Same 3.5.0 approach applies (keystroke buffer + `getComposedRanges` selection reading).
+3. **Timer throttling in occluded windows** can delay the 100ms verification by seconds to minutes. Irrelevant for real users (typing implies a focused, unthrottled tab) but it will mislead anyone testing via remote automation with the window in the background. A `visibilitychange` flush is a cheap future hardening option.

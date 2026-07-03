@@ -3,7 +3,7 @@
 ## [3.4.0] - 2026-07-03
 ### Added
 - **Shortcuts now expand on Tab and Enter, not just Space.** Type your shortcut in a sign-in box and press Tab, or in a search bar and press Enter: the full text is filled in before the page acts on it.
-- **Smart fallback for stubborn editors.** If a site blocks direct expansion (LinkedIn posts and other complex editors), Prompt Box retries through the site's own paste handling. As a last resort it copies the expanded prompt to your clipboard and shows a small reminder to paste it, so expansion always gets you your text.
+- **Smart fallback for stubborn editors.** If a site blocks direct expansion, Prompt Box retries through the site's own paste handling. As a last resort it copies the expanded prompt to your clipboard and shows a small reminder to paste it.
 ### Fixed
 - Shortcuts now work in text fields inside open shadow DOM components, which many sign-in forms and embedded widgets use.
 

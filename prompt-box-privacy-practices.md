@@ -31,6 +31,10 @@ Used only when the user explicitly right-clicks selected text on a webpage to sa
 ### `contextMenus`
 Used to add a "Save to Prompt Box" item to the browser's right-click context menu, allowing users to save highlighted text directly from any webpage.
 
+### `clipboardWrite`
+
+Used only as a last-resort fallback for text expansion. When a site's editor blocks direct text insertion, the expanded prompt is copied to the user's clipboard so they can paste it manually, and an on-page notice tells them to do so. The clipboard is written only in direct response to the user typing one of their own saved shortcuts. The extension never reads the clipboard, and nothing is sent anywhere.
+
 ### Host Permission — `<all_urls>` (via content script)
 A content script (`content.js`) runs on all pages to detect when the user types a saved text expansion trigger keyword in an input field or text editor, and replaces it with the full saved text. This requires access to all URLs because text expansion must work wherever the user types — ChatGPT, Gmail, Google Docs, Notion, Slack, etc. The content script:
 - Only reads keystrokes inside text input fields
@@ -84,6 +88,7 @@ This data is managed entirely by Chrome's built-in storage APIs. When a user cho
 
 | Version | Change |
 |---------|--------|
+| 3.4.0 | Added clipboardWrite permission for the expansion fallback (copies the user's own prompt to their clipboard on their explicit shortcut action); no data leaves the device |
 | 3.2.1 | Bug fix release — no permission or data handling changes |
 | 3.2.0 | Added Chrome Sync storage option; added survey endpoint disclosure |
 | 3.1.0 | Added content script host permission for text expansion |

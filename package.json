@@ -7,7 +7,7 @@
     "zip": "npm run build && cd dist && zip -r ../prompt-box-extension.zip .",
     "lint": "eslint *.js",
     "lint:fix": "eslint *.js --fix",
-    "security": "eslint *.js --config eslint.security.js",
+    "security": "eslint *.js --no-eslintrc --config eslint.security.js",
     "icons": "node build-icons.js",
     "marketing": "node build-marketing.js",
     "video": "bash build-video.sh"

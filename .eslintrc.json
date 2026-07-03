@@ -1,4 +1,5 @@
 {
+  "root": true,
   "env": {
     "browser": true,
     "es2021": true,
@@ -10,9 +11,6 @@
     "sourceType": "script"
   },
   "extends": ["eslint:recommended"],
-  "plugins": [
-    "no-unsanitized"
-  ],
   "rules": {
     "no-console": "warn",
     "no-unused-vars": "warn",
@@ -27,6 +25,10 @@
         "node": true,
         "browser": false
       }
+    },
+    {
+      "files": ["popup.js", "content.js"],
+      "plugins": ["no-unsanitized"]
     }
   ]
 }

@@ -96,13 +96,21 @@ function findShortcutAtEnd(text) {
   return shortcuts[word] ? match[1] : null;
 }
 
+// Keys that trigger expansion in input/textarea. Space is consumed (the
+// expansion replaces shortcut + swallows the space, as before). Tab and
+// Enter are NOT prevented: the value is expanded synchronously in capture
+// phase, then the default action proceeds (focus moves, form submits) with
+// the expanded text already in place. This is what makes sign-in boxes and
+// search bars work, where users never press Space after a shortcut.
+const TRIGGER_KEYS = new Set([' ', 'Tab', 'Enter']);
+
 // ─── KEYDOWN PATH (input / textarea) ─────────────────────────────────────────
 // Fires BEFORE the space is inserted. We preventDefault and do the
 // replacement ourselves, so we never race with framework re-renders.
 // Registered on window+capture so we run before any page-level handlers,
 // regardless of when their script loaded relative to this content script.
 window.addEventListener('keydown', function (e) {
-  if (e.key !== ' ' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!TRIGGER_KEYS.has(e.key) || e.ctrlKey || e.metaKey || e.altKey) return;
   // Skip if a composition (IME) is active
   if (e.isComposing || e.keyCode === 229) return;
 
@@ -131,7 +139,8 @@ window.addEventListener('keydown', function (e) {
   const expansion = shortcuts[shortcut.toLowerCase()];
   pbLog('keydown match:', shortcut, '→', expansion.length, 'chars on', el.tagName, el.type);
 
-  e.preventDefault();
+  // Only Space is consumed. Tab/Enter keep their default action.
+  if (e.key === ' ') e.preventDefault();
 
   const replaceStart = cursor - shortcut.length;
   const newValue =

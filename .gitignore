@@ -46,3 +46,8 @@ PRD.md
 walkthrough.md
 implementation_plan.md
 task.md
+# Never commit secret files
+*.secrets
+*.secret.*
+.env.local
+.env.secret

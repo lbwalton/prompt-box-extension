@@ -17,7 +17,7 @@ Secrets section for where each one actually lives.
 | Project ref | `jmxmtiqkpegqywderwkt` | public |
 | Project URL | `https://jmxmtiqkpegqywderwkt.supabase.co` | public |
 | Region | West US (Oregon), us-west-2 | public |
-| Publishable (anon) key | _copy from dashboard → Settings → API Keys → Publishable key; safe to embed in the extension (RLS protects data)_ | public, safe to commit once filled |
+| Publishable (anon) key | `sb_publishable_vX5mvAVPmCnoebqDyPBRcw_vYS9JLMh` | public, safe to embed in the extension (RLS protects data) |
 
 Dashboard: https://supabase.com/dashboard/project/jmxmtiqkpegqywderwkt
 

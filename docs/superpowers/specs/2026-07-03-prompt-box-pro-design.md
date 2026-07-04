@@ -69,6 +69,8 @@ Rationale: Prompt Box sits between "snippet utility" (Text Blaze) and "AI workfl
 - Shared/team libraries — separate team tier, only on demand signal
 - Native iOS app with keyboard extension — deferred, gated on PWA phone usage
 - Prompt marketplace/community library — parked (AIPRM owns this; low differentiation)
+- Swap in-extension survey banner for a Pro waitlist banner linking to promptboxapp.com/pricing (survey retired; waitlist plan-picker supersedes it) — 3.5.0
+- Launch comms via Resend Broadcasts (waitlist dual-writes to D1 + Resend Audience; verify promptboxapp.com sending domain) — B1
 
 ## Risks and Mitigations
 

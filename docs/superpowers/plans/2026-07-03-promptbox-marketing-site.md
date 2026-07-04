@@ -22,6 +22,9 @@
 - Chrome Web Store listing URL for CTAs: `https://chromewebstore.google.com/detail/prompt-box` (verify the exact slug from the dashboard during Task 2 and use the real one everywhere).
 - Waitlist endpoint URL constant: `https://promptbox-waitlist.lbwalton.workers.dev/waitlist`.
 - Verification for each page task: `npm run build` succeeds AND `grep` finds the page's key copy in the exported HTML under `out/`.
+- UI implementation: before building any page, the implementer MUST load the `frontend-design:frontend-design` skill; the Magic MCP component tools (`mcp__magic__*`) MAY be used to generate or refine components. Whatever the source, final components must use the brand tokens above and pass the honesty rule.
+- Email: waitlist signups dual-write to D1 AND a Resend Audience (Resend account already exists; the survey worker uses it). Launch comms go out via Resend Broadcasts from a promptboxapp.com-verified sender.
+- AEO/GEO: every page ships with JSON-LD structured data where applicable, the site serves /llms.txt, and robots.txt must NOT block AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended stay allowed).
 
 ---
 
@@ -326,6 +329,17 @@ export default {
           return Response.json({ ok: false, error: "invalid email" }, { status: 400, headers: cors });
         }
         await env.DB.prepare("INSERT OR IGNORE INTO waitlist (email, plan) VALUES (?, ?)").bind(email, plan).run();
+        // Best-effort dual-write to the Resend audience so Broadcasts can reach the list.
+        // D1 stays the source of truth; a Resend failure must never fail the signup.
+        if (env.RESEND_API_KEY && env.RESEND_AUDIENCE_ID) {
+          try {
+            await fetch(`https://api.resend.com/audiences/${env.RESEND_AUDIENCE_ID}/contacts`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ email, unsubscribed: false }),
+            });
+          } catch {}
+        }
         return Response.json({ ok: true }, { headers: cors });
       } catch {
         return Response.json({ ok: false }, { status: 500, headers: cors });
@@ -336,7 +350,24 @@ export default {
 };
 ```
 
-- [ ] **Step 4: Deploy and verify**
+- [ ] **Step 4: Resend audience + secrets**
+
+Create the audience (reuse the same RESEND_API_KEY the survey worker uses; retrieve it from the survey worker's secrets or the Resend dashboard):
+
+```bash
+curl -s -X POST https://api.resend.com/audiences -H "Authorization: Bearer $RESEND_API_KEY" -H "Content-Type: application/json" -d '{"name":"Prompt Box Pro waitlist"}'
+```
+
+Note the returned audience `id`. Then from `workers/waitlist`:
+
+```bash
+npx wrangler secret put RESEND_API_KEY      # paste the key when prompted
+npx wrangler secret put RESEND_AUDIENCE_ID  # paste the audience id
+```
+
+Domain note for real sends (user action, before the first broadcast, not blocking this task): verify promptboxapp.com as a sending domain in the Resend dashboard and add the SPF/DKIM records it shows to Cloudflare DNS, so broadcasts come from hello@promptboxapp.com.
+
+- [ ] **Step 5: Deploy and verify**
 
 ```bash
 cd workers/waitlist
@@ -352,10 +383,12 @@ npx wrangler d1 execute prompt-box-survey --remote --command "SELECT email, plan
 npx wrangler d1 execute prompt-box-survey --remote --command "DELETE FROM waitlist WHERE email='plan-test@example.com'"
 ```
 
-- [ ] **Step 5: Commit**
+After the curl test, also confirm the contact appears in the Resend audience (dashboard or `GET /audiences/{id}/contacts`), then delete it there along with the D1 row.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-cd ../.. && git add workers && git commit -m "feat: waitlist worker with D1 storage and CORS"
+cd ../.. && git add workers && git commit -m "feat: waitlist worker with D1 storage, Resend audience dual-write, CORS"
 ```
 
 ---
@@ -600,7 +633,7 @@ export default function Privacy() {
       <ul>
         <li><strong>Clipboard, on your action only.</strong> When you click Copy, or when a site blocks text expansion and Prompt Box falls back to copying the prompt so you can paste it, your prompt is written to your clipboard. Prompt Box never reads your clipboard.</li>
         <li><strong>Survey, on your action only.</strong> If you choose to take our feedback survey, your answers are sent to our survey service. Declining or ignoring it sends nothing.</li>
-        <li><strong>Waitlist, on your action only.</strong> If you join the Pro waitlist on this website, we store your email address to contact you about the launch, and for nothing else.</li>
+        <li><strong>Waitlist, on your action only.</strong> If you join the Pro waitlist on this website, we store your email address (processed by Resend, our email delivery provider) to contact you about the Prompt Box Pro launch, and for nothing else. One email to us removes you from the list.</li>
       </ul>
 
       <h2>Permissions the extension uses</h2>
@@ -767,7 +800,194 @@ git add -A && git commit -m "feat: PromptPerfect comparison page, sitemap, robot
 
 ---
 
-### Task 7: Deploy to Vercel + domain + wrap-up
+### Task 7: SEO / AEO / GEO hardening
+
+**Files:**
+- Create: `public/llms.txt`, `public/og.png` (from `scripts/og-template.svg`)
+- Create: `components/JsonLd.tsx`, `components/Faq.tsx`
+- Modify: `app/layout.tsx` (OpenGraph/Twitter metadata), `app/pricing/page.tsx`, `app/promptperfect-alternative/page.tsx` (FAQ sections + JSON-LD)
+
+**Interfaces:**
+- Consumes: all pages from Tasks 2-6.
+- Produces: `JsonLd({ data })` component rendering a `<script type="application/ld+json">`; `Faq({ items })` component rendering AEO-friendly question/answer blocks AND emitting FAQPage JSON-LD from the same items array (single source, no drift).
+
+- [ ] **Step 1: llms.txt**
+
+Create `public/llms.txt`:
+
+```
+# Prompt Box
+
+> Prompt Box is a local-first Chrome extension for saving, organizing, and expanding AI prompts. Type a shortcut in any text field (ChatGPT, Claude, Gmail, search bars) and the full prompt appears. Free forever for local use; Prompt Box Pro (cloud sync + web app) is launching soon at $2.99/mo, $19/yr, or a $39 founding lifetime deal for the first 100 members.
+
+Prompt Box is an EZE Media product. Privacy-first: no accounts, no analytics, no tracking; prompts live in the user's browser.
+
+## Pages
+
+- [Home](https://promptboxapp.com/): what Prompt Box does, feature overview
+- [Pricing](https://promptboxapp.com/pricing/): Free vs Pro tiers, founding lifetime offer, waitlist
+- [PromptPerfect alternative](https://promptboxapp.com/promptperfect-alternative/): migration guide for PromptPerfect users (service shuts down September 1, 2026)
+- [Privacy policy](https://promptboxapp.com/privacy/): full data handling details
+- [Changelog](https://promptboxapp.com/changelog/): release notes for every version
+
+## Facts
+
+- Platform: Chrome extension (Manifest V3), works on Chromium browsers
+- Storage: local browser storage by default; optional Chrome Sync
+- Text expansion triggers: Space, Tab, Enter in any text field
+- Import/export: CSV
+- Install: https://chromewebstore.google.com/detail/prompt-box
+```
+
+- [ ] **Step 2: JsonLd and Faq components**
+
+Create `components/JsonLd.tsx`:
+
+```tsx
+export default function JsonLd({ data }: { data: object }) {
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
+}
+```
+
+(This is the one sanctioned use of dangerouslySetInnerHTML: the input is our own JSON.stringify output, never user content.)
+
+Create `components/Faq.tsx`:
+
+```tsx
+import JsonLd from "@/components/JsonLd";
+
+export type FaqItem = { q: string; a: string };
+
+export default function Faq({ items }: { items: FaqItem[] }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((i) => ({
+      "@type": "Question",
+      name: i.q,
+      acceptedAnswer: { "@type": "Answer", text: i.a },
+    })),
+  };
+  return (
+    <section className="mx-auto mt-16 max-w-3xl">
+      <h2 className="text-2xl font-bold">Frequently asked questions</h2>
+      <dl className="mt-6 space-y-6">
+        {items.map((i) => (
+          <div key={i.q}>
+            <dt className="font-semibold">{i.q}</dt>
+            <dd className="mt-1 text-zinc-600">{i.a}</dd>
+          </div>
+        ))}
+      </dl>
+      <JsonLd data={jsonLd} />
+    </section>
+  );
+}
+```
+
+- [ ] **Step 3: Wire FAQs and SoftwareApplication schema**
+
+In `app/pricing/page.tsx`, import Faq and JsonLd, and append before the closing fragment:
+
+```tsx
+<JsonLd
+  data={{
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Prompt Box",
+    operatingSystem: "Chrome",
+    applicationCategory: "BrowserApplication",
+    description: "Local-first Chrome extension for saving, organizing, and expanding AI prompts.",
+    offers: [
+      { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
+      { "@type": "Offer", name: "Pro Monthly", price: "2.99", priceCurrency: "USD" },
+      { "@type": "Offer", name: "Pro Annual", price: "19", priceCurrency: "USD" },
+      { "@type": "Offer", name: "Founding Lifetime", price: "39", priceCurrency: "USD" },
+    ],
+  }}
+/>
+<Faq
+  items={[
+    { q: "Is Prompt Box free?", a: "Yes. The local extension is free forever: unlimited prompts, text expansion, tags, and CSV import/export. Pro adds cloud sync and web access." },
+    { q: "What does Prompt Box Pro cost?", a: "Pro is $2.99 per month or $19 per year. The first 100 members can get a $39 one-time Founding Lifetime deal instead." },
+    { q: "Do I need an account to use Prompt Box?", a: "No. The free extension works entirely in your browser with no account, no servers, and no tracking." },
+    { q: "What happens to my prompts if I uninstall?", a: "Prompts are stored locally, so export them to CSV first from Settings. Uninstalling deletes local data." },
+  ]}
+/>
+```
+
+In `app/promptperfect-alternative/page.tsx`, append:
+
+```tsx
+<Faq
+  items={[
+    { q: "When does PromptPerfect shut down?", a: "PromptPerfect closed new signups in June 2026 and shuts down entirely on September 1, 2026." },
+    { q: "Can I import my PromptPerfect prompts into Prompt Box?", a: "Yes. Put your prompts in a CSV with title and text columns, then use Settings, Import in the Prompt Box extension. It takes one step." },
+    { q: "Does Prompt Box optimize prompts like PromptPerfect did?", a: "Not yet. An improve-this-prompt assistant using your own API key is on the roadmap. Prompt Box today focuses on the library and expansion workflow." },
+  ]}
+/>
+```
+
+(Add the imports at the top of each file: `import Faq from "@/components/Faq";` and for pricing also `import JsonLd from "@/components/JsonLd";`.)
+
+- [ ] **Step 4: OpenGraph metadata + OG image**
+
+Create `scripts/og-template.svg`:
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
+  <rect width="1200" height="630" fill="#18181b"/>
+  <rect x="80" y="80" width="96" height="96" rx="20" fill="#f97316"/>
+  <text x="80" y="320" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800" fill="#ffffff">Prompt Box</text>
+  <text x="80" y="400" font-family="Inter, Arial, sans-serif" font-size="36" fill="#a1a1aa">Your AI prompts, everywhere you type.</text>
+  <text x="80" y="530" font-family="Inter, Arial, sans-serif" font-size="28" fill="#0d9488">promptboxapp.com</text>
+</svg>
+```
+
+Generate the PNG (sharp is available in the extension repo; run from there or `npm i -D sharp` here):
+
+```bash
+node -e "require('sharp')('scripts/og-template.svg').resize(1200,630).png().toFile('public/og.png').then(()=>console.log('og.png written'))"
+```
+
+In `app/layout.tsx` metadata, add:
+
+```ts
+openGraph: {
+  title: "Prompt Box: your AI prompts, everywhere you type",
+  description: "Local-first Chrome extension for saving, organizing, and expanding AI prompts.",
+  url: "https://promptboxapp.com",
+  siteName: "Prompt Box",
+  images: [{ url: "/og.png", width: 1200, height: 630 }],
+  type: "website",
+},
+twitter: { card: "summary_large_image", images: ["/og.png"] },
+```
+
+- [ ] **Step 5: Verify**
+
+Run:
+
+```bash
+npm run build
+grep -o "application/ld+json" out/pricing/index.html | head -1
+grep -o "FAQPage" out/promptperfect-alternative/index.html | head -1
+grep -o "og:image" out/index.html | head -1
+test -f out/llms.txt && echo llms-ok
+test -f out/og.png && echo og-ok
+```
+
+Expected: all five checks print.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A && git commit -m "feat: llms.txt, JSON-LD, FAQ blocks, OpenGraph for SEO/AEO/GEO"
+```
+
+---
+
+### Task 8: Deploy to Vercel + domain + wrap-up
 
 **Files:**
 - No code changes expected; deployment and documentation.
@@ -796,6 +1016,9 @@ In Vercel project settings, add `promptboxapp.com` and `www.promptboxapp.com`. T
 - Update `prompt-box-store-listing.md` and the Pro spec status accordingly.
 - Lighthouse pass on the live site (target 90+ on Performance, SEO, Accessibility).
 - Submit the sitemap in Google Search Console (user action; needs his Google account).
+- Verify https://promptboxapp.com/llms.txt and /og.png resolve on the live domain; validate JSON-LD with Google's Rich Results test.
+- Verify promptboxapp.com as a Resend sending domain (SPF/DKIM records into Cloudflare DNS) before the first broadcast.
+- Extension follow-up (3.5.0 track): swap the in-extension survey banner for a Pro waitlist banner linking to https://promptboxapp.com/pricing/.
 
 ---
 
@@ -804,4 +1027,5 @@ In Vercel project settings, add `promptboxapp.com` and `www.promptboxapp.com`. T
 - Spec coverage: landing (Task 2), pricing per spec figures + waitlist (Tasks 3-4), privacy page replacing Gist (Task 5), changelog (Task 5), PromptPerfect SEO page in the Sept 1 window (Task 6), Vercel + Cloudflare DNS (Task 7). Web app and payments are B2/B3, correctly absent.
 - Honesty rule verified: pricing page says "launching soon"; comparison page labels the improver "on the roadmap"; no invented stats.
 - Type consistency: WaitlistForm consumes the Task 3 endpoint and plan values (`monthly | annual | lifetime`); D1 `waitlist` schema matches the worker INSERT.
-- No placeholders: all page copy, worker code, configs, and commands are complete. The one intentional stop: wrangler auth (Task 3) and Search Console (Task 7) need LB's accounts.
+- No placeholders: all page copy, worker code, configs, and commands are complete. Intentional stops needing LB's accounts: wrangler auth (Task 3), Resend domain verification, Search Console (Task 8).
+- Design tooling: implementers load frontend-design skill per Global Constraints; Magic MCP optional for components.

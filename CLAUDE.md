@@ -90,7 +90,7 @@ When bumping the version:
 2. Add a new section at the top of `CHANGELOG.md`
 3. Update `#appVersion` text in popup.html if it's hardcoded
 4. Update `prompt-box-store-listing.md` to reflect any new features or changed permissions
-5. Update `prompt-box-privacy-practices.md` if any permissions were added/removed, external connections changed, or data handling changed — add a row to the Changelog table at the bottom and update the Gist at https://gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1
+5. Update `prompt-box-privacy-practices.md` if any permissions were added/removed, external connections changed, or data handling changed — add a row to the Changelog table at the bottom and update the privacy page at https://promptboxapp.com/privacy (source: `promptbox-site` repo `app/privacy/page.tsx`, redeploy via Vercel)
 
 ## Testing
 
@@ -114,8 +114,8 @@ When asked to "pack and ship" or "create a release zip", follow these steps:
 3. Confirm `manifest.json` version is correct
 4. Ensure `prompt-box-store-listing.md` is up to date — any new features, permission changes, or privacy-relevant changes must be reflected before shipping
 5. Ensure `prompt-box-privacy-practices.md` is up to date — update whenever permissions change, new external connections are added, or data handling changes. This file maps directly to the Privacy Practices tab in the Chrome Web Store Developer Dashboard
-   - Privacy policy URL: https://gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1
-   - If the policy content changes, update the Gist directly (the URL stays the same)
+   - Privacy policy URL: https://promptboxapp.com/privacy
+   - If the policy content changes, edit `app/privacy/page.tsx` in the `promptbox-site` repo and redeploy (the URL stays the same)
 5. Create the zip with **runtime files only** (no dev files, no node_modules, no docs):
 
 ```bash

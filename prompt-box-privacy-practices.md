@@ -2,11 +2,13 @@
 
 ## Privacy Policy URL
 
-**Hosted:** https://gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1
-**File:** `prompt-box-privacy-policy.md` (GitHub Gist — public)
+**Hosted:** https://promptboxapp.com/privacy
+**Source:** `promptbox-site` repo, `app/privacy/page.tsx` (deployed via Vercel)
 **Chrome Web Store field:** Privacy > Privacy policy URL
 
-Update the Gist content whenever data handling changes. The URL itself is permanent.
+Update the privacy page in the `promptbox-site` repo whenever data handling changes, then redeploy. The URL itself is permanent.
+
+> Legacy: the policy previously lived at a GitHub Gist (gist.github.com/lbwalton/7405633b075268bb14a33378eeaba4d1). As of 2026-07-04 the canonical policy is the site page above. Update the store listing's Privacy policy URL field to the new URL on the next submission.
 
 ---
 

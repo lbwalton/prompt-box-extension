@@ -44,12 +44,12 @@ Rationale: Prompt Box sits between "snippet utility" (Text Blaze) and "AI workfl
 - Migration path to direct Stripe + Supabase edge functions if/when the web app needs unified billing.
 
 ### Website (yes, build now; two surfaces, one repo)
-- **Marketing site** (promptbox domain TBD; Vercel + React/TS/Vite + Tailwind per stack defaults):
+- **Marketing site** (promptboxapp.com, registered 2026-07-03, DNS on Cloudflare; hosting on Vercel; Next.js static export + TypeScript + Tailwind, chosen over plain Vite because the comparison/SEO pages need prerendered HTML):
   - Landing + pricing page
   - "PromptPerfect alternative" comparison page (SEO for the refugee window)
   - Privacy policy page (replaces the Gist as the store-listing privacy URL)
   - Changelog/docs
-- **Web app** (app.same-domain): Supabase-authed prompt library: view, edit, organize, copy. Ships as a PWA, which becomes the phone story (installable on iOS home screen) without building a native app.
+- **Web app** (app.promptboxapp.com): Supabase-authed prompt library: view, edit, organize, copy. Ships as a PWA, which becomes the phone story (installable on iOS home screen) without building a native app.
 - Native iOS deferred: Promptty holds that position; revisit only if PWA usage on phones proves demand. Keyboard extension is the feature that would justify native.
 
 ## Build Order (each gets its own plan via writing-plans)

@@ -24,7 +24,8 @@
 - Verification for each page task: `npm run build` succeeds AND `grep` finds the page's key copy in the exported HTML under `out/`.
 - UI implementation: before building any page, the implementer MUST load the `frontend-design:frontend-design` skill; the Magic MCP component tools (`mcp__magic__*`) MAY be used to generate or refine components. Whatever the source, final components must use the brand tokens above and pass the honesty rule.
 - Email: waitlist signups dual-write to D1 AND a Resend Audience (Resend account already exists; the survey worker uses it). Launch comms go out via Resend Broadcasts from a promptboxapp.com-verified sender.
-- AEO/GEO: every page ships with JSON-LD structured data where applicable, the site serves /llms.txt, and robots.txt must NOT block AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended stay allowed).
+- AEO/GEO: every page ships with JSON-LD structured data where applicable, the site serves /llms.txt at the root, and robots.txt (served at the root via app/robots.ts) must NOT block AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended stay allowed).
+- Semantic HTML is mandatory and review-enforced: landmark elements (header, nav, main, footer), exactly one h1 per page with a logical h2/h3 hierarchy, article/section for content blocks, dl for FAQ pairs, table with thead/th for comparisons, button vs a used correctly, and alt text on every image. No div-soup.
 
 ---
 

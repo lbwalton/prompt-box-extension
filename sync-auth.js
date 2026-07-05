@@ -54,6 +54,12 @@
         }
       });
     });
+    // Surface provider errors (user denied, misconfig) instead of a generic message.
+    const errFrag = redirectUrl.split('#')[1] || redirectUrl.split('?')[1] || '';
+    const errParams = new URLSearchParams(errFrag);
+    if (errParams.get('error')) {
+      throw new Error('OAuth error: ' + (errParams.get('error_description') || errParams.get('error')));
+    }
     const tokens = parseRedirect(redirectUrl);
     if (!tokens) throw new Error('no tokens in redirect');
     const email = await fetchUserEmail(tokens.access_token);
@@ -62,13 +68,20 @@
     return { email };
   }
 
+  // Returns the next session on success, null when the refresh token is
+  // definitively invalid (caller should clear), or THROWS on a transient
+  // failure (5xx / network) so the caller keeps the stored session.
   async function refresh(session) {
     const res = await fetch(
       cfg().supabaseUrl + '/auth/v1/token?grant_type=refresh_token',
       { method: 'POST', headers: authHeaders(null), body: JSON.stringify({ refresh_token: session.refresh_token }) }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 401 || res.status === 403) return null;
+      throw new Error('refresh transient ' + res.status);
+    }
     const d = await res.json();
+    if (!d.access_token) throw new Error('refresh returned no access_token');
     const next = {
       access_token: d.access_token,
       refresh_token: d.refresh_token || session.refresh_token,
@@ -84,8 +97,15 @@
     if (!s) return null;
     // Refresh if within 60s of expiry.
     if (Date.now() > (s.expires_at - 60000)) {
-      s = await refresh(s);
-      if (!s) { await clearSession(); return null; }
+      let next;
+      try {
+        next = await refresh(s);
+      } catch (e) {
+        // Transient failure: keep the stored session, just report none this call.
+        return null;
+      }
+      if (!next) { await clearSession(); return null; }
+      s = next;
     }
     return { accessToken: s.access_token, email: s.email };
   }

@@ -7,6 +7,8 @@ const filesToInclude = [
   'background.js',
   'popup.html',
   'popup.js',
+  'sync-config.js',
+  'sync-auth.js',
   'icon16.png',
   'icon48.png',
   'icon128.png'

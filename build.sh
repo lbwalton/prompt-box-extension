@@ -14,6 +14,8 @@ cp Manifest.json dist/
 cp background.js dist/
 cp popup.html dist/
 cp popup.js dist/
+cp sync-config.js dist/
+cp sync-auth.js dist/
 
 # Copy icons if they exist
 if [ -f "icon16.png" ]; then cp icon16.png dist/; fi

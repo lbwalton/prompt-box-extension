@@ -38,6 +38,10 @@ create policy profiles_update_own on public.profiles
 
 -- Guard: prevent clients from self-promoting. If a non-service update tries to change
 -- is_pro/plan/stripe_customer_id, reject it.
+-- Note: auth.role() is always non-null on PostgREST client paths (anon/authenticated/
+-- service_role), so this guard holds for all app-reachable requests; a NULL role only
+-- occurs under a direct DB connection, which is outside the app threat model and can
+-- bypass this trigger anyway.
 create or replace function public.guard_profile_entitlement()
 returns trigger language plpgsql as $$
 begin

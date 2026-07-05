@@ -122,14 +122,14 @@ When asked to "pack and ship" or "create a release zip", follow these steps:
 cd "/Users/labroiwalton/Projects/Deployed/Chrome Extensions/Prompt-box/prompt-box-extension"
 VERSION=$(node -p "require('./manifest.json').version")
 zip -j "/Users/labroiwalton/Projects/Deployed/Chrome Extensions/prompt-box-v${VERSION}.zip" \
-  manifest.json popup.html popup.js background.js content.js \
+  manifest.json popup.html popup.js sync-config.js sync-auth.js background.js content.js \
   icon16.png icon48.png icon128.png
 echo "✓ Created /Users/labroiwalton/Projects/Deployed/Chrome Extensions/prompt-box-v${VERSION}.zip"
 ```
 
 The zip is saved directly to `/Users/labroiwalton/Projects/Deployed/Chrome Extensions/` (not inside the Prompt-box subfolder) — that's the upload-ready file for the Chrome Web Store.
 
-**Runtime files to include:** `manifest.json`, `popup.html`, `popup.js`, `background.js`, `content.js`, `icon16.png`, `icon48.png`, `icon128.png`
+**Runtime files to include:** `manifest.json`, `popup.html`, `popup.js`, `sync-config.js`, `sync-auth.js`, `background.js`, `content.js`, `icon16.png`, `icon48.png`, `icon128.png`
 
 **Never include:** `node_modules/`, `package.json`, `package-lock.json`, `eslint.security.js`, `build.js`, `build.sh`, `CLAUDE.md`, `SECURITY-GUIDE.md`, `PRD.md`, `README.md`, `*.mdc`, `test-*.html`, legacy icon assets
 

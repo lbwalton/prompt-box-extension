@@ -420,6 +420,17 @@ function loadPrompts() {
       // Local-only mode: use local storage, skip sync entirely
       prompts = localResult.prompts || [];
       finishLoadPrompts(prompts, null, localResult);
+    } else if (localResult.syncFallback) {
+      // The library already overflowed Chrome Sync's quota and fell back to
+      // local, so the local copy is authoritative. Paint it immediately for a
+      // snappy popup, and read only the small settings keys from sync (skipping
+      // the slow, discarded prompts round-trip).
+      prompts = localResult.prompts || [];
+      displayPrompts();
+      chrome.storage.sync.get(['availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+        prompts = localResult.prompts || [];
+        finishLoadPrompts(prompts, syncResult, localResult);
+      });
     } else {
       // Sync mode: read from sync, fall back to local on first run or quota error
       chrome.storage.sync.get(['prompts', 'availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {

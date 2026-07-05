@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
   loadPrompts();
   setupEventListeners();
   checkUpdateStatus();
+  setupAccountUI();
+  renderAccount();
 });
 
 // Theme: load saved preference on startup
@@ -215,6 +217,47 @@ function setupEventListeners() {
   const promptList = document.getElementById('promptList');
   promptList.addEventListener('click', handlePromptButtonClick);
   promptList.addEventListener('click', handlePeekClick);
+}
+
+// ---- Account (Prompt Box Pro) ----
+async function renderAccount() {
+  const signedOut = document.getElementById('accountSignedOut');
+  const signedIn = document.getElementById('accountSignedIn');
+  if (!signedOut || !signedIn) return;
+  let session = null;
+  try { session = await PBAuth.getSession(); } catch (e) { session = null; }
+  if (session && session.email) {
+    signedOut.style.display = 'none';
+    signedIn.style.display = 'block';
+    document.getElementById('accountEmail').textContent = session.email;
+  } else {
+    signedOut.style.display = 'block';
+    signedIn.style.display = 'none';
+  }
+}
+
+function setupAccountUI() {
+  const signInBtn = document.getElementById('signInBtn');
+  const signOutBtn = document.getElementById('signOutBtn');
+  const status = document.getElementById('authStatus');
+  if (signInBtn) {
+    signInBtn.addEventListener('click', async function () {
+      status.textContent = 'Opening Google sign-in...';
+      try {
+        await PBAuth.signIn();
+        status.textContent = '';
+        await renderAccount();
+      } catch (e) {
+        status.textContent = 'Sign-in did not complete. Please try again.';
+      }
+    });
+  }
+  if (signOutBtn) {
+    signOutBtn.addEventListener('click', async function () {
+      await PBAuth.signOut();
+      await renderAccount();
+    });
+  }
 }
 
 // Handle clicks on prompt buttons (copy, edit, delete, favorite)

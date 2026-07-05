@@ -1712,6 +1712,7 @@
     </div>
 
     <div class="settings-tabs">
+      <button class="settings-tab" data-tab="account">Account</button>
       <button class="settings-tab active" data-tab="tags">Tags</button>
       <button class="settings-tab" data-tab="import-export">Import / Export</button>
       <button class="settings-tab" data-tab="about">About</button>
@@ -1772,6 +1773,22 @@
         <p>Prompts sync across Chrome profiles via Chrome Sync. Use <strong>Import / Export</strong> to back up your library before uninstalling.</p>
         <button class="about-link" id="viewChangelogBtn">View Release Notes</button>
         <div class="changelog-preview" id="changelogPreview">Loading changes...</div>
+      </div>
+    </div>
+
+    <!-- Account Panel -->
+    <div class="settings-panel" id="panel-account">
+      <div class="about-section">
+        <div id="accountSignedOut">
+          <p><strong>Prompt Box Pro</strong> adds cloud sync across browsers and devices. Sign in to get started. Your local prompts stay exactly where they are.</p>
+          <button class="import-export-btn" id="signInBtn" style="width:100%;">Sign in with Google</button>
+          <div class="import-status" id="authStatus"></div>
+        </div>
+        <div id="accountSignedIn" style="display:none;">
+          <p>Signed in as <strong id="accountEmail"></strong></p>
+          <p id="accountPlan" style="color: var(--color-text-secondary); font-size: 13px;"></p>
+          <button class="import-export-btn" id="signOutBtn" style="width:100%;">Sign out</button>
+        </div>
       </div>
     </div>
   </div>

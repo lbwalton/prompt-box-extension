@@ -72,6 +72,9 @@ Star your highest-use prompts and expansions. They surface first so your best ma
 **Chrome Sync or Local-Only Storage**
 Choose where your prompts live. Enable Chrome Sync to automatically sync your library across every Chrome profile signed into the same Google account — no account required. Or keep everything strictly local to a single device. Switch at any time in Settings.
 
+**Prompt Box Pro (optional, coming soon)**
+Sign in with Google to sync your prompts across browsers and devices. The free extension stays local-first and requires no account.
+
 **Import / Export**
 Export your entire library to CSV for backup. Import from a spreadsheet to bulk-load your team's shared prompts or migrate from another tool.
 

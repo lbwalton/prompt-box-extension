@@ -8,7 +8,8 @@
     "activeTab",
     "contextMenus",
     "clipboardWrite",
-    "identity"
+    "identity",
+    "alarms"
   ],
   "host_permissions": [
     "https://jmxmtiqkpegqywderwkt.supabase.co/*"

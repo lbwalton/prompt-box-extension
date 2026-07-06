@@ -15,7 +15,8 @@
     "PB_SYNC_CONFIG": "readonly",
     "PBAuth": "writable",
     "PBSync": "writable",
-    "chrome": "readonly"
+    "chrome": "readonly",
+    "importScripts": "readonly"
   },
   "rules": {
     "no-console": "warn",

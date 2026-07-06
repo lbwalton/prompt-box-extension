@@ -125,5 +125,5 @@
     await clearSession();
   }
 
-  window.PBAuth = { signIn, signOut, getSession, getAccessToken };
+  globalThis.PBAuth = { signIn, signOut, getSession, getAccessToken };
 })();

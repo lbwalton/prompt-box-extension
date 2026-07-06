@@ -1746,7 +1746,15 @@
             <span class="storage-pref-desc">Stays entirely on this device. Nothing ever leaves Chrome. Best for maximum privacy.</span>
           </div>
         </label>
+        <label class="storage-pref-option" id="storagePrefCloudOption" style="opacity:0.5;">
+          <input type="radio" name="storagePref" id="storagePrefCloud" value="cloud" disabled>
+          <div class="storage-pref-content">
+            <span class="storage-pref-title">Prompt Box Cloud <span class="storage-pref-badge" id="cloudProBadge">Pro</span></span>
+            <span class="storage-pref-desc">Syncs across every device you're signed into, no size limit. Requires Prompt Box Pro.</span>
+          </div>
+        </label>
       </div>
+      <div class="import-status" id="syncStatus" style="margin-top:6px;"></div>
 
       <h4 class="settings-section-title">Import / Export Prompts</h4>
       <div class="backup-notice">

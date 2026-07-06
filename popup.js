@@ -49,6 +49,8 @@ document.addEventListener('DOMContentLoaded', function () {
   checkUpdateStatus();
   setupAccountUI();
   renderAccount();
+  refreshCloudOption();
+  updateSyncStatus();
 });
 
 // Theme: load saved preference on startup
@@ -234,6 +236,7 @@ async function renderAccount() {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
   }
+  refreshCloudOption();
 }
 
 function setupAccountUI() {
@@ -423,8 +426,9 @@ function loadPrompts() {
       displayPrompts(); // instant paint, offline-safe
       chrome.storage.sync.get(['availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
         finishLoadPrompts(prompts, syncResult, localResult);
+        const pulledFrom = prompts;
         PBSync.pullRemoteChanges(prompts).then(function (res) {
-          if (res && res.changed) {
+          if (res && res.changed && prompts === pulledFrom) {
             prompts = res.prompts;
             chrome.storage.local.set({ prompts: prompts });
             rerenderPrompts();
@@ -618,8 +622,10 @@ function dismissSurvey() {
 function updateStoragePrefUI() {
   const syncRadio = document.getElementById('storagePrefSync');
   const localRadio = document.getElementById('storagePrefLocal');
+  const cloudRadio = document.getElementById('storagePrefCloud');
   if (syncRadio) syncRadio.checked = storagePref === 'sync';
   if (localRadio) localRadio.checked = storagePref === 'local';
+  if (cloudRadio) cloudRadio.checked = storagePref === 'cloud';
 
   // Hide sync fallback banner if user switched to local mode
   if (storagePref === 'local') {
@@ -644,6 +650,7 @@ function updateBackupNotice() {
 // Switch storage location and migrate prompts to the new destination
 function setStoragePref(newPref) {
   if (newPref === storagePref) return;
+  const prev = storagePref;
   storagePref = newPref;
   chrome.storage.local.set({ storagePref: newPref });
   updateStoragePrefUI();
@@ -652,9 +659,39 @@ function setStoragePref(newPref) {
     // Moving to local: persist current prompts locally, clear sync copy
     chrome.storage.local.set({ prompts: prompts, syncFallback: false });
     chrome.storage.sync.remove('prompts');
+  } else if (newPref === 'cloud') {
+    // Moving to cloud: back to local-as-truth for the prompt store, then migrate up.
+    chrome.storage.local.set({ prompts: prompts, syncFallback: false });
+    if (prev === 'sync') chrome.storage.sync.remove('prompts');
+    PBSync.migrateToCloud(prompts).then(function (res) {
+      if (res && res.prompts) {
+        prompts = res.prompts;
+        chrome.storage.local.set({ prompts: prompts });
+        rerenderPrompts();
+      }
+      updateSyncStatus();
+    }).catch(function () { updateSyncStatus(); });
   } else {
     // Moving to sync: push current prompts to sync (respects quota, shows fallback if needed)
     savePrompts(prompts);
+  }
+}
+
+// Enable the Cloud storage option only when signed in AND is_pro.
+async function refreshCloudOption() {
+  const wrapper = document.getElementById('storagePrefCloudOption');
+  const radio = document.getElementById('storagePrefCloud');
+  const badge = document.getElementById('cloudProBadge');
+  if (!wrapper || !radio) return;
+  let ent = null;
+  try { ent = await PBSync.fetchEntitlement(); } catch (e) { ent = null; }
+  const allowed = !!(ent && ent.is_pro);
+  radio.disabled = !allowed;
+  wrapper.style.opacity = allowed ? '1' : '0.5';
+  if (badge) badge.style.display = allowed ? 'none' : 'inline';
+  // If we're in cloud mode but Pro was revoked, fall back to sync.
+  if (!allowed && storagePref === 'cloud') {
+    setStoragePref('sync');
   }
 }
 

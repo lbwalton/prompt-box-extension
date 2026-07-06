@@ -416,6 +416,25 @@ function loadPrompts() {
     storagePref = localResult.storagePref || 'sync';
     updateStoragePrefUI();
 
+    if (storagePref === 'cloud') {
+      // Cloud mode: local is the instant source of truth; pull deltas in the
+      // background. Tags/filter prefs still live in Chrome Sync (unchanged).
+      prompts = localResult.prompts || [];
+      displayPrompts(); // instant paint, offline-safe
+      chrome.storage.sync.get(['availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+        finishLoadPrompts(prompts, syncResult, localResult);
+        PBSync.pullRemoteChanges(prompts).then(function (res) {
+          if (res && res.changed) {
+            prompts = res.prompts;
+            chrome.storage.local.set({ prompts: prompts });
+            rerenderPrompts();
+          }
+          updateSyncStatus();
+        }).catch(function () { updateSyncStatus(); });
+      });
+      return;
+    }
+
     if (storagePref === 'local') {
       // Local-only mode: use local storage, skip sync entirely
       prompts = localResult.prompts || [];
@@ -484,6 +503,30 @@ function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
   }
 }
 
+// Re-paint the whole prompt list from the current in-memory `prompts` array.
+function rerenderPrompts() {
+  displayPrompts();
+  refreshTagSources();
+  updateTagList();
+  updateTagFilterDropdown();
+  filterAndSortPrompts();
+}
+
+// Update the "last synced" status line (added to the DOM in Task 5).
+async function updateSyncStatus() {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  if (storagePref !== 'cloud') { el.textContent = ''; return; }
+  let status = null;
+  try { status = await PBSync.getStatus(); } catch (e) { status = null; }
+  if (status && status.lastSyncAt) {
+    const t = new Date(status.lastSyncAt);
+    el.textContent = 'Cloud sync on. Last synced ' + t.toLocaleTimeString() + '.';
+  } else {
+    el.textContent = 'Cloud sync on.';
+  }
+}
+
 // Security: Sanitize input to prevent CSV injection and limit length
 function sanitizeInput(input, type = 'text') {
   if (typeof input !== 'string') return '';
@@ -514,6 +557,19 @@ function sanitizeInput(input, type = 'text') {
 
 // Save prompts — writes to sync or local depending on user's storagePref
 function savePrompts(promptsArray, callback) {
+  if (storagePref === 'cloud') {
+    // Write local first (instant, offline-safe), then push in the background.
+    chrome.storage.local.set({ prompts: promptsArray }, function () {
+      if (callback) callback();
+      PBSync.pushLocalChanges(promptsArray).then(function () {
+        // ensureUuids may have added uuids to the objects; persist them.
+        chrome.storage.local.set({ prompts: promptsArray });
+        updateSyncStatus();
+      }).catch(function () { updateSyncStatus(); });
+    });
+    return;
+  }
+
   if (storagePref === 'local') {
     chrome.storage.local.set({ prompts: promptsArray }, function () {
       if (callback) callback();
@@ -744,10 +800,19 @@ function editPrompt(promptId) {
 // Delete a prompt
 function deletePrompt(promptId) {
   if (confirm('Are you sure you want to delete this prompt?')) {
-    prompts = prompts.filter(p => p.id != promptId);
-    savePrompts(prompts, function () {
-      filterAndSortPrompts();
-    });
+    const gone = prompts.find(p => p.id == promptId);
+    const finishDelete = function () {
+      prompts = prompts.filter(p => p.id != promptId);
+      savePrompts(prompts, function () {
+        filterAndSortPrompts();
+      });
+    };
+    if (storagePref === 'cloud' && gone && gone.uuid) {
+      // Persist the tombstone first so the subsequent push includes it.
+      PBSync.recordTombstone(gone.uuid).then(finishDelete);
+    } else {
+      finishDelete();
+    }
   }
 }
 

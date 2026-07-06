@@ -213,6 +213,16 @@
     return { lastSyncAt: iso && iso !== '1970-01-01T00:00:00Z' ? iso : null };
   }
 
+  // First switch to Cloud: give everything a uuid, push local up, pull anything
+  // already in the cloud (e.g. a second device), and return the merged set.
+  async function migrateToCloud(localPrompts) {
+    const list = Array.isArray(localPrompts) ? localPrompts.slice() : [];
+    ensureUuids(list);
+    await pushLocalChanges(list);
+    const pulled = await pullRemoteChanges(list);
+    return { ok: pulled.ok, prompts: pulled.prompts };
+  }
+
   globalThis.PBSync = {
     ensureUuids,
     fetchEntitlement,
@@ -220,6 +230,7 @@
     pushLocalChanges,
     pullRemoteChanges,
     getStatus,
+    migrateToCloud,
     _toIso,
     _toMs,
     _authHeaders,

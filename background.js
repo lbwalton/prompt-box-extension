@@ -21,8 +21,11 @@ async function backgroundPull() {
   const { prompts } = await new Promise((r) =>
     chrome.storage.local.get(['prompts'], r));
   const res = await PBSync.pullRemoteChanges(prompts || []);
-  if (res && res.changed) {
-    await new Promise((r) => chrome.storage.local.set({ prompts: res.prompts }, r));
+  if (res && res.ok) {
+    if (res.changed) {
+      await new Promise((r) => chrome.storage.local.set({ prompts: res.prompts }, r));
+    }
+    await PBSync.commitPullCursor(res.cursor);
   }
 }
 

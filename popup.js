@@ -257,6 +257,7 @@ function setupAccountUI() {
   if (signOutBtn) {
     signOutBtn.addEventListener('click', async function () {
       await PBAuth.signOut();
+      try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
       await renderAccount();
     });
   }
@@ -427,10 +428,13 @@ function loadPrompts() {
         finishLoadPrompts(prompts, syncResult, localResult);
         const pulledFrom = prompts;
         PBSync.pullRemoteChanges(prompts).then(function (res) {
-          if (res && res.changed && prompts === pulledFrom) {
-            prompts = res.prompts;
-            chrome.storage.local.set({ prompts: prompts });
-            rerenderPrompts();
+          if (res && res.ok && prompts === pulledFrom) {
+            if (res.changed) {
+              prompts = res.prompts;
+              chrome.storage.local.set({ prompts: prompts });
+              rerenderPrompts();
+            }
+            PBSync.commitPullCursor(res.cursor);
           }
           updateSyncStatus();
         }).catch(function () { updateSyncStatus(); });
@@ -561,12 +565,17 @@ function sanitizeInput(input, type = 'text') {
 // Save prompts — writes to sync or local depending on user's storagePref
 function savePrompts(promptsArray, callback) {
   if (storagePref === 'cloud') {
-    // Write local first (instant, offline-safe), then push in the background.
+    // Backfill uuids BEFORE persisting so the cloud key survives even if the
+    // popup closes mid-push; retries then reuse the same uuid (no duplicates).
+    PBSync.ensureUuids(promptsArray);
     chrome.storage.local.set({ prompts: promptsArray }, function () {
       if (callback) callback();
       PBSync.pushLocalChanges(promptsArray).then(function () {
-        // ensureUuids may have added uuids to the objects; persist them.
-        chrome.storage.local.set({ prompts: promptsArray });
+        // Re-persist only if no pull merge replaced the array while the push
+        // was in flight (the merge already persisted its own newer copy).
+        if (prompts === promptsArray) {
+          chrome.storage.local.set({ prompts: promptsArray });
+        }
         updateSyncStatus();
       }).catch(function () { updateSyncStatus(); });
     });
@@ -662,11 +671,13 @@ function setStoragePref(newPref) {
     // Moving to cloud: back to local-as-truth for the prompt store, then migrate up.
     chrome.storage.local.set({ prompts: prompts, syncFallback: false });
     if (prev === 'sync') chrome.storage.sync.remove('prompts');
+    const migratedFrom = prompts;
     PBSync.migrateToCloud(prompts).then(function (res) {
-      if (res && res.prompts) {
+      if (res && res.prompts && prompts === migratedFrom) {
         prompts = res.prompts;
         chrome.storage.local.set({ prompts: prompts });
         rerenderPrompts();
+        PBSync.commitPullCursor(res.cursor);
       }
       updateSyncStatus();
     }).catch(function () { updateSyncStatus(); });

@@ -171,7 +171,7 @@
         '/rest/v1/prompts?select=*&order=updated_at.asc&updated_at=gt.' +
         encodeURIComponent(since);
       const res = await _authedFetch(path, { method: 'GET' });
-      if (!res.ok) return { ok: false, changed: false, prompts: promptsArray };
+      if (!res.ok) return { ok: false, changed: false, prompts: promptsArray, cursor: null };
       const rows = await res.json();
 
       const byUuid = new Map();
@@ -199,11 +199,25 @@
       }
       for (const p of byUuid.values()) merged.push(p);
 
-      await _setLocal({ pb_last_pull: maxUpdated });
-      return { ok: true, changed, prompts: merged };
+      return { ok: true, changed, prompts: merged, cursor: maxUpdated };
     } catch (e) {
-      return { ok: false, changed: false, prompts: promptsArray };
+      return { ok: false, changed: false, prompts: promptsArray, cursor: null };
     }
+  }
+
+  // Persist the pull cursor. Called by the OWNER of the merged result, only
+  // after it has actually applied/persisted the merge (or confirmed no change);
+  // committing earlier would permanently skip rows a discarded merge contained.
+  function commitPullCursor(cursor) {
+    if (!cursor) return Promise.resolve();
+    return _setLocal({ pb_last_pull: cursor });
+  }
+  // Forget all sync progress. Called on sign-out so a different account (or a
+  // fresh sign-in) starts with a full pull/push instead of inheriting cursors
+  // and queued tombstones that belong to the previous account.
+  function resetSyncState() {
+    return new Promise((res) =>
+      chrome.storage.local.remove(['pb_last_push', 'pb_last_pull', 'pb_tombstones'], res));
   }
 
   // ---- sync status ----
@@ -220,7 +234,7 @@
     ensureUuids(list);
     await pushLocalChanges(list);
     const pulled = await pullRemoteChanges(list);
-    return { ok: pulled.ok, prompts: pulled.prompts };
+    return { ok: pulled.ok, prompts: pulled.prompts, cursor: pulled.cursor };
   }
 
   globalThis.PBSync = {
@@ -229,6 +243,8 @@
     recordTombstone,
     pushLocalChanges,
     pullRemoteChanges,
+    commitPullCursor,
+    resetSyncState,
     getStatus,
     migrateToCloud,
     _toIso,

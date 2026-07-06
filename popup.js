@@ -49,7 +49,6 @@ document.addEventListener('DOMContentLoaded', function () {
   checkUpdateStatus();
   setupAccountUI();
   renderAccount();
-  refreshCloudOption();
   updateSyncStatus();
 });
 
@@ -689,8 +688,10 @@ async function refreshCloudOption() {
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';
   if (badge) badge.style.display = allowed ? 'none' : 'inline';
-  // If we're in cloud mode but Pro was revoked, fall back to sync.
-  if (!allowed && storagePref === 'cloud') {
+  // Only demote out of cloud mode on a DEFINITIVE "not Pro" answer. A null
+  // entitlement (offline, token blip, transient error) must not kick a Pro
+  // user off cloud sync: offline-first means cloud mode keeps working locally.
+  if (ent && ent.is_pro === false && storagePref === 'cloud') {
     setStoragePref('sync');
   }
 }

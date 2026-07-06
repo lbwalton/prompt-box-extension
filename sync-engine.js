@@ -58,10 +58,146 @@
     }
   }
 
+  // ---- local sync-state storage ----
+  function _getLocal(keys) {
+    return new Promise((res) => chrome.storage.local.get(keys, res));
+  }
+  function _setLocal(obj) {
+    return new Promise((res) => chrome.storage.local.set(obj, res));
+  }
+
+  // ---- shape mappers (local prompt <-> cloud row) ----
+  function _localToRow(p) {
+    return {
+      id: p.uuid,
+      title: p.title != null ? p.title : null,
+      text: p.text != null ? p.text : null,
+      tags: Array.isArray(p.tags) ? p.tags : [],
+      shortcut: p.shortcut || null,
+      is_favorite: !!p.isFavorite,
+      is_sensitive: p.isSensitive !== false,
+      created_at: _toIso(p.createdAt),
+      updated_at: _toIso(p.updatedAt),
+    };
+  }
+  function _rowToLocal(row, existing) {
+    return {
+      // Keep the device-local numeric id if we already have this prompt;
+      // otherwise use the uuid as the local id (strings compare fine via ==).
+      id: existing && existing.id != null ? existing.id : row.id,
+      uuid: row.id,
+      title: row.title || '',
+      text: row.text || '',
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      shortcut: row.shortcut || null,
+      isFavorite: !!row.is_favorite,
+      isSensitive: row.is_sensitive !== false,
+      createdAt: _toMs(row.created_at),
+      updatedAt: _toMs(row.updated_at),
+    };
+  }
+
+  // ---- tombstone recording ----
+  async function recordTombstone(uuid) {
+    if (!uuid) return;
+    const cur = (await _getLocal(['pb_tombstones'])).pb_tombstones || [];
+    cur.push({ uuid, deleted_at: _toIso(Date.now()) });
+    await _setLocal({ pb_tombstones: cur });
+  }
+
+  // ---- push changes: local -> cloud ----
+  async function pushLocalChanges(promptsArray) {
+    try {
+      const list = Array.isArray(promptsArray) ? promptsArray : [];
+      ensureUuids(list); // mutates in place; caller persists prompts separately
+      const state = await _getLocal(['pb_last_push', 'pb_tombstones']);
+      const lastPush = state.pb_last_push || 0;
+      const tombstones = state.pb_tombstones || [];
+
+      const changedRows = list
+        .filter((p) => (p.updatedAt || 0) > lastPush)
+        .map(_localToRow);
+      const tombRows = tombstones.map((t) => ({
+        id: t.uuid,
+        deleted_at: t.deleted_at,
+        updated_at: t.deleted_at,
+      }));
+      const body = changedRows.concat(tombRows);
+      if (body.length === 0) return { ok: true, pushed: 0 };
+
+      const res = await _authedFetch('/rest/v1/prompts', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return { ok: false, pushed: 0 };
+
+      const maxUpdated = list.reduce((m, p) => Math.max(m, p.updatedAt || 0), lastPush);
+      await _setLocal({ pb_last_push: maxUpdated, pb_tombstones: [] });
+      return { ok: true, pushed: body.length };
+    } catch (e) {
+      return { ok: false, pushed: 0 };
+    }
+  }
+
+  // ---- pull changes: cloud -> local ----
+  async function pullRemoteChanges(promptsArray) {
+    try {
+      const state = await _getLocal(['pb_last_pull']);
+      const since = state.pb_last_pull || '1970-01-01T00:00:00Z';
+      const path =
+        '/rest/v1/prompts?select=*&order=updated_at.asc&updated_at=gt.' +
+        encodeURIComponent(since);
+      const res = await _authedFetch(path, { method: 'GET' });
+      if (!res.ok) return { ok: false, changed: false, prompts: promptsArray };
+      const rows = await res.json();
+
+      const byUuid = new Map();
+      for (const p of promptsArray || []) {
+        if (p.uuid) byUuid.set(p.uuid, p);
+      }
+      let changed = false;
+      let maxUpdated = since;
+      for (const row of rows) {
+        if (row.updated_at > maxUpdated) maxUpdated = row.updated_at;
+        const existing = byUuid.get(row.id);
+        if (row.deleted_at) {
+          if (existing) { byUuid.delete(row.id); changed = true; }
+          continue;
+        }
+        if (!existing || _toMs(row.updated_at) > (existing.updatedAt || 0)) {
+          byUuid.set(row.id, _rowToLocal(row, existing));
+          changed = true;
+        }
+      }
+      // Preserve any purely-local prompts that never got a uuid (not yet pushed).
+      const merged = [];
+      for (const p of promptsArray || []) {
+        if (!p.uuid) merged.push(p);
+      }
+      for (const p of byUuid.values()) merged.push(p);
+
+      await _setLocal({ pb_last_pull: maxUpdated });
+      return { ok: true, changed, prompts: merged };
+    } catch (e) {
+      return { ok: false, changed: false, prompts: promptsArray };
+    }
+  }
+
+  // ---- sync status ----
+  async function getStatus() {
+    const state = await _getLocal(['pb_last_pull']);
+    const iso = state.pb_last_pull;
+    return { lastSyncAt: iso && iso !== '1970-01-01T00:00:00Z' ? iso : null };
+  }
+
   globalThis.PBSync = {
     ensureUuids,
     fetchEntitlement,
-    // internals exposed for later tasks in this module build-out:
+    recordTombstone,
+    pushLocalChanges,
+    pullRemoteChanges,
+    getStatus,
     _toIso,
     _toMs,
     _authHeaders,

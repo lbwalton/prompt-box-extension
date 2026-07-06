@@ -10,6 +10,12 @@ async function backgroundPull() {
   const { storagePref } = await new Promise((r) =>
     chrome.storage.local.get(['storagePref'], r));
   if (storagePref !== 'cloud') return;
+  // The open popup owns pulling (and guards its own writes); a concurrent
+  // background merge could clobber an in-flight save. Only pull when closed.
+  if (chrome.runtime.getContexts) {
+    const contexts = await chrome.runtime.getContexts({ contextTypes: ['POPUP'] });
+    if (contexts.length > 0) return;
+  }
   const token = await PBAuth.getAccessToken();
   if (!token) return;
   const { prompts } = await new Promise((r) =>
@@ -36,7 +42,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM) {
-    backgroundPull();
+    backgroundPull().catch(() => {});
   }
 });
 

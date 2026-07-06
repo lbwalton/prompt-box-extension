@@ -880,7 +880,101 @@ git commit -m "feat(pro): background chrome.alarms pull to keep cloud data fresh
 
 ---
 
-### Task 7: Privacy + store-listing disclosure update (docs only)
+### Task 7: Tag filter self-heals from tags present on prompts
+
+**Files:**
+- Modify: `popup.js` (`updateTagFilterDropdown`, popup.js:1325)
+
+**Interfaces:**
+- Consumes: the module-level `availableTags` and `prompts` arrays in `popup.js`. No dependency on Tasks 1-6 (standalone hardening; can be built/reviewed in any order).
+- Produces: the tag filter dropdown lists the UNION of the tag library and every tag actually present on prompts. Why: the tag library lives in `chrome.storage.sync` and a few of its writes are fire-and-forget (popup.js:1052, popup.js:1090); if a library write ever failed (e.g. sync quota exhausted), a tag could exist on prompts but be missing from the library. Today that tag would silently vanish from the filter dropdown. After this task the dropdown self-heals: any tag on a prompt is always filterable.
+
+- [ ] **Step 1: Rewrite `updateTagFilterDropdown` to build from the union**
+
+Replace the existing function (popup.js:1325) with:
+
+```js
+// Build the tag filter from the union of the tag library and tags actually
+// present on prompts, so a tag still filters even if a library write to
+// Chrome Sync ever failed (e.g. quota) while the tag lives on in prompts.
+function updateTagFilterDropdown() {
+  const dropdown = document.getElementById('tagFilter');
+  const currentValue = dropdown.value;
+
+  const seen = new Set();
+  const allTags = [];
+  // Library tags first, preserving their order.
+  availableTags.forEach(tag => {
+    if (!seen.has(tag.name)) {
+      seen.add(tag.name);
+      allTags.push(tag.name);
+    }
+  });
+  // Then any tags that exist only on prompts, alphabetized.
+  const promptOnly = [];
+  prompts.forEach(p => (p.tags || []).forEach(t => {
+    if (!seen.has(t)) {
+      seen.add(t);
+      promptOnly.push(t);
+    }
+  }));
+  promptOnly.sort((a, b) => a.localeCompare(b));
+  allTags.push(...promptOnly);
+
+  dropdown.innerHTML = '<option value="">All tags</option>';
+
+  allTags.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    dropdown.appendChild(option);
+  });
+
+  // Restore previous selection if it still exists
+  if (allTags.includes(currentValue)) {
+    dropdown.value = currentValue;
+  }
+}
+```
+
+(XSS-safe by construction: options are built with `createElement` + `textContent`, never string-concatenated HTML. The one `innerHTML` assignment is a static literal with no user input — same as the current code.)
+
+- [ ] **Step 2: Verify lint/security**
+
+```bash
+npm run lint && npm run security
+```
+
+Expected: 0 errors.
+
+- [ ] **Step 3: Manual test — orphan tag still filterable**
+
+Reload the extension, open the popup, and in its DevTools console simulate a tag that exists on a prompt but not in the library:
+
+```js
+prompts[0].tags.push('OrphanTag');
+updateTagFilterDropdown();
+```
+
+Expected: the tag filter dropdown now contains "OrphanTag" (after the library tags, alphabetized among prompt-only tags). Select it → the list filters to that prompt. Then clean up:
+
+```js
+prompts[0].tags = prompts[0].tags.filter(t => t !== 'OrphanTag');
+updateTagFilterDropdown();
+```
+
+Expected: "OrphanTag" disappears from the dropdown. Also confirm normal behavior is unchanged: every library tag still appears exactly once, and the current selection survives a re-render.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add popup.js
+git commit -m "fix: tag filter lists tags present on prompts even if missing from the library"
+```
+
+---
+
+### Task 8: Privacy + store-listing disclosure update (docs only)
 
 **Files:**
 - Modify: `prompt-box-privacy-practices.md`
@@ -949,7 +1043,8 @@ git commit -m "docs(pro): disclose alarms permission and cloud-sync data handlin
   - "stable uuid per prompt, backfilled on migration" → Task 2 (`ensureUuids`), applied in Task 3 push and Task 4 migrate. **Deviation noted:** the spec says "generates a stable id (uuid)"; this plan adds a SEPARATE `uuid` field rather than replacing the numeric `id`, to avoid rewriting every `p.id ==` comparison across popup.js. Cloud identity = `uuid`; local DOM identity = `id`. Same guarantee, lower blast radius.
   - "network failures non-fatal, local authoritative, retry next tick, subtle status indicator" → Task 3 (all functions swallow errors and return `{ok:false}`), Task 5 (`#syncStatus`).
   - "never block editing on sync" → Task 4 (save writes local + fires push after callback).
-  - Manifest/permission + privacy disclosure → Task 6 (`alarms`), Task 7 (docs).
+  - Manifest/permission + privacy disclosure → Task 6 (`alarms`), Task 8 (docs).
+- **LB-requested hardening (2026-07-06), beyond spec:** the tag filter dropdown builds from the union of the tag library and tags actually present on prompts, so the UI self-heals if a fire-and-forget `availableTags` write to Chrome Sync ever fails → Task 7. Scope is the filter dropdown only (the combobox picker still builds from the library; a tag missing there can be re-created, which is acceptable).
 - **Scope:** prompts only sync (tags/filter prefs stay in Chrome Sync, matching the cloud schema where `tags` is a jsonb column on each prompt row). Confirmed with LB. Web app, version history, team libraries, billing = out of scope (later phases).
 - **Type consistency:** `pushLocalChanges(promptsArray)`/`pullRemoteChanges(promptsArray)` both take the local array and return `{ok, ...}`; `pullRemoteChanges`/`migrateToCloud` return `{prompts}`; `getStatus()`→`{lastSyncAt}`; `fetchEntitlement()`→`{is_pro, plan}|null`. `storagePref` is `'sync'|'local'|'cloud'` everywhere (`loadPrompts`, `savePrompts`, `setStoragePref`, `updateStoragePrefUI`, `deletePrompt`, `updateSyncStatus`). Row mappers `_localToRow`/`_rowToLocal` are inverses over the fields used.
 - **Security invariants:** no secrets added (reuses public anon key + `PBAuth` token); `user_id` provided by DB default under RLS (Task 1); `is_pro` never written by the client and gates the UI (Task 5); new rendered text (`#syncStatus`) uses `textContent`; prompt rendering unchanged (still `escapeHTML`).

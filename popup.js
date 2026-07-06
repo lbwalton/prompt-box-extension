@@ -788,6 +788,11 @@ function savePromptWithTitle(title, text) {
     const index = prompts.findIndex(p => p.id == editingPromptId);
     if (index !== -1) {
       promptData.id = editingPromptId;
+      // Preserve identity + per-card state not captured by the form:
+      // uuid is the cloud sync key (losing it forks a duplicate cloud row),
+      // isSensitive is toggled on the card, not in the form.
+      promptData.uuid = prompts[index].uuid;
+      promptData.isSensitive = prompts[index].isSensitive;
       prompts[index] = promptData;
     }
   } else {
@@ -1146,8 +1151,9 @@ function deleteTag(tagName) {
 
     // Remove from all prompts
     prompts.forEach(prompt => {
-      if (prompt.tags) {
+      if (prompt.tags && prompt.tags.includes(tagName)) {
         prompt.tags = prompt.tags.filter(tag => tag !== tagName);
+        prompt.updatedAt = Date.now();
       }
     });
 
@@ -1185,6 +1191,7 @@ function updateTagName(oldName, newName) {
       const tagIndex = prompt.tags.indexOf(oldName);
       if (tagIndex !== -1) {
         prompt.tags[tagIndex] = newName;
+        prompt.updatedAt = Date.now();
       }
     }
   });
@@ -1588,7 +1595,9 @@ function importPrompts(event) {
             tags: tags,
             isFavorite: promptData['Is Favorite']?.toLowerCase() === 'yes' || tags.includes('Favorite'),
             createdAt: promptData['Created Date'] ? new Date(promptData['Created Date']).getTime() : Date.now(),
-            updatedAt: promptData['Modified Date'] ? new Date(promptData['Modified Date']).getTime() : Date.now()
+            // Import is a modification of this library: stamp now so the row
+            // beats pb_last_push and actually syncs in cloud mode.
+            updatedAt: Date.now()
           };
 
           prompts.push(newPrompt);

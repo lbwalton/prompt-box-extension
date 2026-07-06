@@ -23,9 +23,13 @@ let ceExpanding = false; // re-entrancy guard for contenteditable expansion
 // storagePref is always kept in chrome.storage.local; prompts live in either
 // chrome.storage.sync (default) or chrome.storage.local depending on it.
 function loadShortcuts() {
-  chrome.storage.local.get(['storagePref'], function (prefResult) {
+  chrome.storage.local.get(['storagePref', 'syncFallback'], function (prefResult) {
     const storagePref = prefResult.storagePref || 'sync';
-    const area = storagePref === 'local' ? chrome.storage.local : chrome.storage.sync;
+    // Prompts live in chrome.storage.local for local and cloud modes, and when
+    // the library overflowed Chrome Sync (syncFallback). Only pure sync mode
+    // reads chrome.storage.sync.
+    const useLocal = storagePref !== 'sync' || prefResult.syncFallback === true;
+    const area = useLocal ? chrome.storage.local : chrome.storage.sync;
     area.get(['prompts'], function (result) {
       const prompts = result.prompts || [];
       shortcuts = {};
@@ -42,7 +46,7 @@ function loadShortcuts() {
 // Re-load when prompts change in EITHER storage area, or when the user
 // switches storage mode.
 chrome.storage.onChanged.addListener(function (changes, areaName) {
-  if (changes.prompts || changes.storagePref) loadShortcuts();
+  if (changes.prompts || changes.storagePref || changes.syncFallback) loadShortcuts();
 });
 
 loadShortcuts();

@@ -1424,11 +1424,32 @@ function updateComboboxHighlight() {
   });
 }
 
-// Update the tag filter dropdown with all available tags
+// Build the tag filter from the union of the tag library and tags actually
+// present on prompts, so a tag still filters even if a library write to
+// Chrome Sync ever failed (e.g. quota) while the tag lives on in prompts.
 function updateTagFilterDropdown() {
   const dropdown = document.getElementById('tagFilter');
   const currentValue = dropdown.value;
-  const allTags = availableTags.map(tag => tag.name);
+
+  const seen = new Set();
+  const allTags = [];
+  // Library tags first, preserving their order.
+  availableTags.forEach(tag => {
+    if (!seen.has(tag.name)) {
+      seen.add(tag.name);
+      allTags.push(tag.name);
+    }
+  });
+  // Then any tags that exist only on prompts, alphabetized.
+  const promptOnly = [];
+  prompts.forEach(p => (p.tags || []).forEach(t => {
+    if (!seen.has(t)) {
+      seen.add(t);
+      promptOnly.push(t);
+    }
+  }));
+  promptOnly.sort((a, b) => a.localeCompare(b));
+  allTags.push(...promptOnly);
 
   dropdown.innerHTML = '<option value="">All tags</option>';
 

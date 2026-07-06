@@ -122,19 +122,41 @@
         deleted_at: t.deleted_at,
         updated_at: t.deleted_at,
       }));
-      const body = changedRows.concat(tombRows);
-      if (body.length === 0) return { ok: true, pushed: 0 };
+      if (changedRows.length === 0 && tombRows.length === 0) {
+        return { ok: true, pushed: 0 };
+      }
 
-      const res = await _authedFetch('/rest/v1/prompts', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return { ok: false, pushed: 0 };
-
+      // Snapshot the cursor target BEFORE any await: an edit that lands while a
+      // push is in flight must stay newer than the cursor so the next tick sends it.
       const maxUpdated = list.reduce((m, p) => Math.max(m, p.updatedAt || 0), lastPush);
-      await _setLocal({ pb_last_push: maxUpdated, pb_tombstones: [] });
-      return { ok: true, pushed: body.length };
+
+      // PostgREST bulk upserts require every row to share the same key set, so
+      // changed prompts and tombstones go in two separate requests.
+      if (changedRows.length > 0) {
+        const res = await _authedFetch('/rest/v1/prompts', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(changedRows),
+        });
+        if (!res.ok) return { ok: false, pushed: 0 };
+        await _setLocal({ pb_last_push: maxUpdated });
+      }
+
+      if (tombRows.length > 0) {
+        const res = await _authedFetch('/rest/v1/prompts', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+          body: JSON.stringify(tombRows),
+        });
+        if (!res.ok) return { ok: false, pushed: changedRows.length };
+        // Remove only the tombstones this push actually flushed; one recorded
+        // while the request was in flight stays queued for the next tick.
+        const flushed = new Set(tombstones.map((t) => t.uuid));
+        const cur = (await _getLocal(['pb_tombstones'])).pb_tombstones || [];
+        await _setLocal({ pb_tombstones: cur.filter((t) => !flushed.has(t.uuid)) });
+      }
+
+      return { ok: true, pushed: changedRows.length + tombRows.length };
     } catch (e) {
       return { ok: false, pushed: 0 };
     }

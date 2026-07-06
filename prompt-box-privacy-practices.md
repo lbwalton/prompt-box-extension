@@ -48,9 +48,19 @@ A content script (`content.js`) runs on all pages to detect when the user types 
 
 Used only to sign the user in with Google when they choose to create a Prompt Box Pro account. It launches the standard Google sign-in and returns an authentication token. Prompt Box never sees the user's Google password.
 
+### `alarms`
+
+Used only when Prompt Box Pro cloud sync is enabled, to periodically check our
+Supabase backend for changes made on your other devices so your library stays
+up to date. It runs no more than once every few minutes and does nothing for
+signed-out or local-only users.
+
 ### Host permission — `https://jmxmtiqkpegqywderwkt.supabase.co/*`
 
-Used only when the user has signed in to Prompt Box Pro, to talk to our Supabase backend for account sign-in and (with Pro) cloud sync. No data is sent here for signed-out or local-only users.
+Used only when the user has signed in to Prompt Box Pro. For account sign-in, and
+— when the user turns on Cloud sync — to store and retrieve their prompts on our
+Supabase backend (encrypted in transit and at rest). Nothing is sent here for
+signed-out or local-only users; local-only remains the default.
 
 ---
 
@@ -98,7 +108,7 @@ This data is managed entirely by Chrome's built-in storage APIs. When a user cho
 
 | Version | Change |
 |---------|--------|
-| 4.0.0 | Added optional Prompt Box Pro accounts (Google sign-in) and cloud sync; adds identity permission and a Supabase host permission. Local-only remains the default; nothing leaves the device unless the user signs in and enables sync. |
+| 4.0.0 | Prompt Box Pro cloud sync: when enabled, prompts are stored on our Supabase backend so they sync across devices. Adds the alarms permission for periodic background sync. Local-only remains the default; nothing leaves the device unless the user signs in and turns on Cloud sync. |
 | 3.4.0 | Added clipboardWrite permission for the expansion fallback (copies the user's own prompt to their clipboard on their explicit shortcut action); no data leaves the device |
 | 3.2.1 | Bug fix release — no permission or data handling changes |
 | 3.2.0 | Added Chrome Sync storage option; added survey endpoint disclosure |

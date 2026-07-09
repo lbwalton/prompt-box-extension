@@ -243,7 +243,11 @@ function renderProBadge() {
       header.title = label;
       header.setAttribute('aria-label', label);
     }
-    if (account) account.classList.toggle('dimmed', !isPro);
+    if (account) {
+      account.classList.toggle('dimmed', !isPro);
+      account.title = label;
+      account.setAttribute('aria-label', label);
+    }
     if (word) word.style.display = isPro ? 'inline' : 'none';
   });
 }
@@ -283,6 +287,7 @@ function setupAccountUI() {
   const status = document.getElementById('authStatus');
   if (signInBtn) {
     signInBtn.addEventListener('click', async function () {
+      entitlementEpoch++;
       status.textContent = 'Opening Google sign-in...';
       try {
         await PBAuth.signIn();

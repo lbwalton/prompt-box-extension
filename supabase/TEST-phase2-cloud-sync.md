@@ -40,6 +40,15 @@ To reset later: same statement with `is_pro = false`.
 4. **Revocation:** set `is_pro = false`, reopen popup → automatically falls back to Sync mode, prompts intact. (Flip back to true and reselect Cloud before continuing.)
 5. **Transient failure is NOT revocation:** DevTools → Network → Offline, reopen popup → stays in cloud mode (option may appear dimmed; that's fine). Back online.
 
+## 3b. Pro badge
+
+1. Signed out → header seal is dimmed grey; clicking it opens Settings > Account. No "PRO MEMBER" text anywhere.
+2. Signed in, `is_pro = false` → header + account seals dimmed, no wordmark.
+3. `is_pro = true`, reopen popup → both seals vivid teal, "PRO MEMBER" next to your email, tooltip "Prompt Box Pro member". Check light AND dark mode.
+4. Reopen the popup again → vivid instantly, no grey flash (cache paint).
+5. DevTools → Network → Offline, reopen popup → badge still vivid (transient failure never dims it). Back online.
+6. Sign out → dims immediately. Set `is_pro = false` in SQL, sign in again → dims after the entitlement fetch.
+
 ## 4. Two-profile round-trip (core)
 
 1. A: add prompt "Cross-device 1". B: reopen popup → appears.

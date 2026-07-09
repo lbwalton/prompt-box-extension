@@ -44,6 +44,7 @@ if (typeof chrome !== 'undefined') {
 // When popup opens, load existing prompts
 document.addEventListener('DOMContentLoaded', function () {
   loadSavedTheme();
+  renderProBadge();
   loadPrompts();
   setupEventListeners();
   checkUpdateStatus();
@@ -218,6 +219,40 @@ function setupEventListeners() {
   const promptList = document.getElementById('promptList');
   promptList.addEventListener('click', handlePromptButtonClick);
   promptList.addEventListener('click', handlePeekClick);
+
+  // Pro badge → Settings > Account
+  document.getElementById('proBadgeHeader')?.addEventListener('click', openAccountPanel);
+}
+
+// ---- Pro badge (verified-style seal) ----
+// Paints instantly from the pb_is_pro cache; refreshCloudOption updates the
+// cache on every DEFINITIVE entitlement answer. Display state only — gates nothing.
+function renderProBadge() {
+  chrome.storage.local.get(['pb_is_pro'], function (r) {
+    const isPro = r.pb_is_pro === true;
+    const label = isPro ? 'Prompt Box Pro member' : 'Get Prompt Box Pro';
+    const header = document.getElementById('proBadgeHeader');
+    const account = document.getElementById('proBadgeAccount');
+    const word = document.getElementById('proBadgeWord');
+    if (header) {
+      header.classList.toggle('dimmed', !isPro);
+      header.title = label;
+      header.setAttribute('aria-label', label);
+    }
+    if (account) account.classList.toggle('dimmed', !isPro);
+    if (word) word.style.display = isPro ? 'inline' : 'none';
+  });
+}
+
+// Open the Settings panel on the Account tab (used by the badge click).
+function openAccountPanel() {
+  const tagManagement = document.getElementById('tagManagement');
+  if (tagManagement && tagManagement.style.display !== 'block') {
+    showTagManagement();
+  }
+  const accountTab = document.querySelector('.settings-tab[data-tab="account"]');
+  if (accountTab) accountTab.click();
+  if (tagManagement) tagManagement.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---- Account (Prompt Box Pro) ----
@@ -258,6 +293,7 @@ function setupAccountUI() {
     signOutBtn.addEventListener('click', async function () {
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
+      chrome.storage.local.set({ pb_is_pro: false }, renderProBadge);
       await renderAccount();
     });
   }
@@ -696,6 +732,11 @@ async function refreshCloudOption() {
   let ent = null;
   try { ent = await PBSync.fetchEntitlement(); } catch (e) { ent = null; }
   const allowed = !!(ent && ent.is_pro);
+  // Definitive answer (non-null): refresh the badge cache. A transient null
+  // never changes it — same rule as the cloud-mode demotion below.
+  if (ent) {
+    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true }, renderProBadge);
+  }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';
   if (badge) badge.style.display = allowed ? 'none' : 'inline';

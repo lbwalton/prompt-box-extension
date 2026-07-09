@@ -766,11 +766,11 @@ async function maybeOfferCloudSync(ent) {
   const cloudNoun = count === 1 ? 'prompt' : 'prompts';
   const localNoun = prompts.length === 1 ? 'prompt' : 'prompts';
   if (count > 0 && prompts.length === 0) {
-    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud sync to download it to this device.';
+    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud Sync to download it to this device.';
   } else if (count > 0) {
-    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud sync? Your ' + prompts.length + ' local ' + localNoun + ' will be merged in.';
+    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud Sync? Your ' + prompts.length + ' local ' + localNoun + ' will be merged in.';
   } else {
-    text.textContent = "You're Pro. Turn on Cloud sync to back up your prompts across your devices.";
+    text.textContent = "You're Pro. Turn on Cloud Sync to back up your prompts across your devices.";
   }
   banner.style.display = 'block';
 }

@@ -51,3 +51,6 @@ task.md
 *.secret.*
 .env.local
 .env.secret
+
+# Superpowers tooling state (brainstorm sessions, sdd artifacts, etc.)
+.superpowers/

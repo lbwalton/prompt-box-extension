@@ -51,9 +51,9 @@ To reset later: same statement with `is_pro = false`.
 
 ## 3c. Cloud sync onboarding banner
 
-1. Signed-in Pro, NOT in cloud mode, cloud has data, this device empty → banner: "Your cloud library (N prompts) is ready. Turn on Cloud sync to download it to this device." One click on [Turn on Cloud Sync] → library appears; banner gone.
+1. Signed-in Pro, NOT in cloud mode, cloud has data, this device empty → banner: "Your cloud library (N prompts) is ready. Turn on Cloud Sync to download it to this device." One click on [Turn on Cloud Sync] → library appears; banner gone.
 2. Same but with local prompts on the device → banner adds "Your M local prompts will be merged in." [Turn on] merges both ways.
-3. Pro with an empty cloud → "You're Pro. Turn on Cloud sync to back up your prompts across your devices."
+3. Pro with an empty cloud → "You're Pro. Turn on Cloud Sync to back up your prompts across your devices."
 4. [Not now] → banner gone, stays gone across popup reopens.
 5. Sign out, sign back in → banner re-offers (dismissal cleared).
 6. Already in cloud mode / signed out / free user → banner never shows. The old "would you pay for Pro?" survey banner is gone for everyone.

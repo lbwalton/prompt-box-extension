@@ -225,6 +225,10 @@ function setupEventListeners() {
 }
 
 // ---- Pro badge (verified-style seal) ----
+// Bumped on sign-out so an entitlement fetch that started before the user
+// signed out can't apply its stale answer afterwards.
+let entitlementEpoch = 0;
+
 // Paints instantly from the pb_is_pro cache; refreshCloudOption updates the
 // cache on every DEFINITIVE entitlement answer. Display state only — gates nothing.
 function renderProBadge() {
@@ -291,6 +295,7 @@ function setupAccountUI() {
   }
   if (signOutBtn) {
     signOutBtn.addEventListener('click', async function () {
+      entitlementEpoch++;
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
       chrome.storage.local.set({ pb_is_pro: false }, renderProBadge);
@@ -729,8 +734,11 @@ async function refreshCloudOption() {
   const radio = document.getElementById('storagePrefCloud');
   const badge = document.getElementById('cloudProBadge');
   if (!wrapper || !radio) return;
+  const epoch = entitlementEpoch;
   let ent = null;
   try { ent = await PBSync.fetchEntitlement(); } catch (e) { ent = null; }
+  // A sign-out happened while this fetch was in flight: its answer is stale.
+  if (epoch !== entitlementEpoch) return;
   const allowed = !!(ent && ent.is_pro);
   // Definitive answer (non-null): refresh the badge cache. A transient null
   // never changes it — same rule as the cloud-mode demotion below.

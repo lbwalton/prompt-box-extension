@@ -58,6 +58,25 @@
     }
   }
 
+  // Count of live (non-deleted) prompts in the cloud for this account.
+  // Display/offer logic only (onboarding banner) — never gates sync.
+  // Returns null on any failure so callers can silently skip the offer.
+  async function cloudPromptCount() {
+    try {
+      const res = await _authedFetch(
+        '/rest/v1/prompts?select=id&deleted_at=is.null&limit=1',
+        { method: 'GET', headers: { Prefer: 'count=exact' } }
+      );
+      if (!res.ok) return null;
+      // content-range looks like "0-0/10", or "*/0" for an empty table.
+      const range = res.headers.get('content-range') || '';
+      const total = parseInt(range.split('/')[1], 10);
+      return Number.isFinite(total) ? total : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   // ---- local sync-state storage ----
   function _getLocal(keys) {
     return new Promise((res) => chrome.storage.local.get(keys, res));
@@ -240,6 +259,7 @@
   globalThis.PBSync = {
     ensureUuids,
     fetchEntitlement,
+    cloudPromptCount,
     recordTombstone,
     pushLocalChanges,
     pullRemoteChanges,

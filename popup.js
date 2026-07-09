@@ -23,7 +23,7 @@ const defaultTags = [
 let availableTags = [...defaultTags]; // Tags available for selection
 let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
-let storagePref = 'sync'; // 'sync' | 'local' — loaded from chrome.storage.local on startup
+let storagePref = 'sync'; // 'sync' | 'local' | 'cloud' — loaded from chrome.storage.local on startup
 
 // Tag combobox state
 let comboboxOpen = false;
@@ -748,6 +748,7 @@ async function refreshCloudOption() {
 // upload future prompts, so it always requires this explicit click (spec:
 // 2026-07-09-cloud-sync-onboarding-design.md).
 async function maybeOfferCloudSync(ent) {
+  const epoch = entitlementEpoch;
   const banner = document.getElementById('syncOfferBanner');
   const text = document.getElementById('syncOfferText');
   if (!banner || !text) return;
@@ -772,6 +773,9 @@ async function maybeOfferCloudSync(ent) {
   } else {
     text.textContent = "You're Pro. Turn on Cloud Sync to back up your prompts across your devices.";
   }
+  // A sign-out (or mode switch) may have landed while we awaited the
+  // dismissal read / count probe — never show a stale offer.
+  if (epoch !== entitlementEpoch || storagePref === 'cloud') return;
   banner.style.display = 'block';
 }
 

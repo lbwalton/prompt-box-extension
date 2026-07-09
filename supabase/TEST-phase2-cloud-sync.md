@@ -49,6 +49,16 @@ To reset later: same statement with `is_pro = false`.
 5. DevTools → Network → Offline, reopen popup → badge still vivid (transient failure never dims it). Back online.
 6. Sign out → dims immediately. Set `is_pro = false` in SQL, sign in again → dims after the entitlement fetch.
 
+## 3c. Cloud sync onboarding banner
+
+1. Signed-in Pro, NOT in cloud mode, cloud has data, this device empty → banner: "Your cloud library (N prompts) is ready. Turn on Cloud sync to download it to this device." One click on [Turn on Cloud Sync] → library appears; banner gone.
+2. Same but with local prompts on the device → banner adds "Your M local prompts will be merged in." [Turn on] merges both ways.
+3. Pro with an empty cloud → "You're Pro. Turn on Cloud sync to back up your prompts across your devices."
+4. [Not now] → banner gone, stays gone across popup reopens.
+5. Sign out, sign back in → banner re-offers (dismissal cleared).
+6. Already in cloud mode / signed out / free user → banner never shows. The old "would you pay for Pro?" survey banner is gone for everyone.
+7. Offline popup open (transient entitlement/count failure) → no banner, no error; re-evaluates next open.
+
 ## 4. Two-profile round-trip (core)
 
 1. A: add prompt "Cross-device 1". B: reopen popup → appears.

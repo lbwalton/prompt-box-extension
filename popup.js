@@ -204,13 +204,15 @@ function setupEventListeners() {
     });
   });
 
-  // Cloud sync survey
-  document.getElementById('surveyYesBtn')?.addEventListener('click', function () {
-    chrome.tabs.create({ url: 'https://prompt-box-survey.lbwalton.workers.dev' });
-    dismissSurvey();
+  // Cloud sync onboarding banner
+  document.getElementById('syncOfferYesBtn')?.addEventListener('click', function () {
+    document.getElementById('syncOfferBanner').style.display = 'none';
+    setStoragePref('cloud');
   });
-  document.getElementById('surveyNoBtn')?.addEventListener('click', dismissSurvey);
-  document.getElementById('surveyDismissBtn')?.addEventListener('click', dismissSurvey);
+  document.getElementById('syncOfferNoBtn')?.addEventListener('click', function () {
+    document.getElementById('syncOfferBanner').style.display = 'none';
+    chrome.storage.local.set({ pb_sync_offer_dismissed: true });
+  });
 
   // Sync fallback banner — export shortcut
   document.getElementById('syncFallbackExportBtn')?.addEventListener('click', exportPrompts);
@@ -304,6 +306,7 @@ function setupAccountUI() {
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
       chrome.storage.local.set({ pb_is_pro: false }, renderProBadge);
+      chrome.storage.local.remove('pb_sync_offer_dismissed');
       await renderAccount();
     });
   }
@@ -470,7 +473,7 @@ function loadPrompts() {
       // background. Tags/filter prefs still live in Chrome Sync (unchanged).
       prompts = localResult.prompts || [];
       displayPrompts(); // instant paint, offline-safe
-      chrome.storage.sync.get(['availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+      chrome.storage.sync.get(['availableTags', 'filterSettings'], function (syncResult) {
         finishLoadPrompts(prompts, syncResult, localResult);
         const pulledFrom = prompts;
         PBSync.pullRemoteChanges(prompts).then(function (res) {
@@ -499,13 +502,13 @@ function loadPrompts() {
       // the slow, discarded prompts round-trip).
       prompts = localResult.prompts || [];
       displayPrompts();
-      chrome.storage.sync.get(['availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+      chrome.storage.sync.get(['availableTags', 'filterSettings'], function (syncResult) {
         prompts = localResult.prompts || [];
         finishLoadPrompts(prompts, syncResult, localResult);
       });
     } else {
       // Sync mode: read from sync, fall back to local on first run or quota error
-      chrome.storage.sync.get(['prompts', 'availableTags', 'filterSettings', 'cloudSyncSurvey'], function (syncResult) {
+      chrome.storage.sync.get(['prompts', 'availableTags', 'filterSettings'], function (syncResult) {
         if (!syncResult.prompts && localResult.prompts && localResult.prompts.length > 0) {
           // First-time migration: push existing local prompts to sync
           savePrompts(localResult.prompts);
@@ -543,16 +546,6 @@ function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
     if (settings.tagFilter) document.getElementById('tagFilter').value = settings.tagFilter;
     if (settings.sortBy) document.getElementById('sortBy').value = settings.sortBy;
     filterAndSortPrompts();
-  }
-
-  // Survey shown to all users — even local-only users may want cross-device sync
-  if (syncResult) {
-    checkCloudSyncSurvey(syncResult.cloudSyncSurvey);
-  } else {
-    // Local-only mode: read survey state from sync directly
-    chrome.storage.sync.get(['cloudSyncSurvey'], function (r) {
-      checkCloudSyncSurvey(r.cloudSyncSurvey);
-    });
   }
 }
 
@@ -657,21 +650,6 @@ function showSyncFallbackBanner() {
   if (banner) banner.style.display = 'block';
 }
 
-// Check if the cloud sync Pro survey should be shown (3+ prompts, not yet seen)
-function checkCloudSyncSurvey(savedSurveyResult) {
-  if (savedSurveyResult && savedSurveyResult.seen) return;
-  if (prompts.length < 3) return;
-  const banner = document.getElementById('cloudSyncSurvey');
-  if (banner) banner.style.display = 'block';
-}
-
-// Dismiss the cloud sync survey permanently
-function dismissSurvey() {
-  const banner = document.getElementById('cloudSyncSurvey');
-  if (banner) banner.style.display = 'none';
-  chrome.storage.sync.set({ cloudSyncSurvey: { seen: true } });
-}
-
 // Update the storage preference radio UI to reflect current storagePref value
 function updateStoragePrefUI() {
   const syncRadio = document.getElementById('storagePrefSync');
@@ -717,6 +695,8 @@ function setStoragePref(newPref) {
     // Moving to cloud: back to local-as-truth for the prompt store, then migrate up.
     chrome.storage.local.set({ prompts: prompts, syncFallback: false });
     if (prev === 'sync') chrome.storage.sync.remove('prompts');
+    const offerBanner = document.getElementById('syncOfferBanner');
+    if (offerBanner) offerBanner.style.display = 'none';
     const migratedFrom = prompts;
     PBSync.migrateToCloud(prompts).then(function (res) {
       if (res && res.prompts && prompts === migratedFrom) {
@@ -759,6 +739,40 @@ async function refreshCloudOption() {
   if (ent && ent.is_pro === false && storagePref === 'cloud') {
     setStoragePref('sync');
   }
+  maybeOfferCloudSync(ent);
+}
+
+// ---- Cloud sync onboarding offer ----
+// One-click banner for signed-in Pro users not yet in cloud mode. There is
+// deliberately NO auto-enable: turning on cloud mode arms this device to
+// upload future prompts, so it always requires this explicit click (spec:
+// 2026-07-09-cloud-sync-onboarding-design.md).
+async function maybeOfferCloudSync(ent) {
+  const banner = document.getElementById('syncOfferBanner');
+  const text = document.getElementById('syncOfferText');
+  if (!banner || !text) return;
+  if (!ent || ent.is_pro !== true || storagePref === 'cloud') {
+    banner.style.display = 'none';
+    return;
+  }
+  const dismissed = await new Promise(function (res) {
+    chrome.storage.local.get(['pb_sync_offer_dismissed'], function (r) {
+      res(r.pb_sync_offer_dismissed === true);
+    });
+  });
+  if (dismissed) return;
+  const count = await PBSync.cloudPromptCount();
+  if (count === null) return; // transient failure: re-evaluate next open
+  const cloudNoun = count === 1 ? 'prompt' : 'prompts';
+  const localNoun = prompts.length === 1 ? 'prompt' : 'prompts';
+  if (count > 0 && prompts.length === 0) {
+    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud sync to download it to this device.';
+  } else if (count > 0) {
+    text.textContent = 'Your cloud library (' + count + ' ' + cloudNoun + ') is ready. Turn on Cloud sync? Your ' + prompts.length + ' local ' + localNoun + ' will be merged in.';
+  } else {
+    text.textContent = "You're Pro. Turn on Cloud sync to back up your prompts across your devices.";
+  }
+  banner.style.display = 'block';
 }
 
 // Save a new prompt or update existing one

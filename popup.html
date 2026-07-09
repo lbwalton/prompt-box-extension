@@ -1699,14 +1699,13 @@
     <button class="about-link" id="syncFallbackExportBtn" style="background:none;border:none;padding:0;cursor:pointer;font-size:12px;">Export a CSV backup</button> to protect your data.
   </div>
 
-  <!-- Cloud sync Pro demand survey -->
-  <div class="cloud-sync-survey" id="cloudSyncSurvey" style="display:none;">
-    <span class="survey-text">Quick question: would you pay for Prompt Box Pro to sync across all devices and browsers?</span>
+  <!-- Cloud sync onboarding offer (signed-in Pro users not yet in cloud mode) -->
+  <div class="cloud-sync-survey" id="syncOfferBanner" style="display:none;">
+    <span class="survey-text" id="syncOfferText"></span>
     <div class="survey-actions">
-      <button class="survey-yes-btn" id="surveyYesBtn">Yes, tell me more</button>
-      <button class="survey-no-btn" id="surveyNoBtn">No thanks</button>
+      <button class="survey-yes-btn" id="syncOfferYesBtn">Turn on Cloud Sync</button>
+      <button class="survey-no-btn" id="syncOfferNoBtn">Not now</button>
     </div>
-    <button class="survey-dismiss-btn" id="surveyDismissBtn">&#x2715;</button>
   </div>
 
   <div class="prompt-form" id="promptForm">

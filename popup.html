@@ -1596,12 +1596,60 @@
       background: var(--color-gold-light);
       color: var(--color-warning);
     }
+
+    /* ---- Pro badge (verified-style seal) ---- */
+    .header h1 {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .pro-badge {
+      display: inline-flex;
+      align-items: center;
+      color: var(--color-info);
+      background: none;
+      border: none;
+      padding: 0;
+      line-height: 0;
+      vertical-align: middle;
+    }
+
+    button.pro-badge {
+      cursor: pointer;
+    }
+
+    button.pro-badge:focus-visible {
+      outline: 2px solid var(--color-info);
+      outline-offset: 2px;
+      border-radius: 50%;
+    }
+
+    .pro-badge.dimmed {
+      filter: grayscale(1);
+      opacity: 0.45;
+    }
+
+    .pro-badge-word {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--color-info);
+      vertical-align: middle;
+    }
   </style>
 </head>
 
 <body>
   <div class="header">
-    <h1>Prompt Box</h1>
+    <h1>Prompt Box
+      <button id="proBadgeHeader" class="pro-badge dimmed" title="Get Prompt Box Pro" aria-label="Get Prompt Box Pro">
+        <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 2.8 A2.75 2.75 0 0 1 16.6 4.03 A2.75 2.75 0 0 1 19.97 7.4 A2.75 2.75 0 0 1 21.2 12 A2.75 2.75 0 0 1 19.97 16.6 A2.75 2.75 0 0 1 16.6 19.97 A2.75 2.75 0 0 1 12 21.2 A2.75 2.75 0 0 1 7.4 19.97 A2.75 2.75 0 0 1 4.03 16.6 A2.75 2.75 0 0 1 2.8 12 A2.75 2.75 0 0 1 4.03 7.4 A2.75 2.75 0 0 1 7.4 4.03 A2.75 2.75 0 0 1 12 2.8 Z"/>
+          <path d="M8 12.6l2.6 2.6 5.4-6" fill="none" stroke="var(--color-surface, #fff)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </h1>
     <div class="header-buttons">
       <button class="add-prompt-btn" id="addPromptBtn">+ Add</button>
       <button class="privacy-shield-btn" id="privacyShieldBtn" title="Privacy shield — hide all previews">
@@ -1793,7 +1841,15 @@
           <div class="import-status" id="authStatus"></div>
         </div>
         <div id="accountSignedIn" style="display:none;">
-          <p>Signed in as <strong id="accountEmail"></strong></p>
+          <p>Signed in as <strong id="accountEmail"></strong>
+            <span id="proBadgeAccount" class="pro-badge dimmed" title="Prompt Box Pro">
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12 2.8 A2.75 2.75 0 0 1 16.6 4.03 A2.75 2.75 0 0 1 19.97 7.4 A2.75 2.75 0 0 1 21.2 12 A2.75 2.75 0 0 1 19.97 16.6 A2.75 2.75 0 0 1 16.6 19.97 A2.75 2.75 0 0 1 12 21.2 A2.75 2.75 0 0 1 7.4 19.97 A2.75 2.75 0 0 1 4.03 16.6 A2.75 2.75 0 0 1 2.8 12 A2.75 2.75 0 0 1 4.03 7.4 A2.75 2.75 0 0 1 7.4 4.03 A2.75 2.75 0 0 1 12 2.8 Z"/>
+                <path d="M8 12.6l2.6 2.6 5.4-6" fill="none" stroke="var(--color-surface, #fff)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span id="proBadgeWord" class="pro-badge-word" style="display:none;">PRO MEMBER</span>
+          </p>
           <p id="accountPlan" style="color: var(--color-text-secondary); font-size: 13px;"></p>
           <button class="import-export-btn" id="signOutBtn" style="width:100%;">Sign out</button>
         </div>

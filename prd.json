@@ -5,8 +5,8 @@
   "project": {
     "testCommand": "npm run lint && npm run security",
     "buildCommand": null,
-    "devServer": "python3 -m http.server 5641 --directory test-harness",
-    "baseUrl": "http://127.0.0.1:5641",
+    "devServer": "python3 -m http.server 5641 (from repo root; harness fetches /popup.html + real scripts)",
+    "baseUrl": "http://127.0.0.1:5641/test-harness/",
     "branchPattern": "one branch per BUILD: feature/bulk-delete (BD*), feature/pro-b2-phase3-billing (B3*); stories commit onto the build branch",
     "mergePolicy": "push branch + open PR (gh pr create) when all of a build's stories pass machine verification; PR body carries LB's live-test checklist; merge ONLY on LB's word after his real-browser test. Never commit to main.",
     "rules": [
@@ -23,8 +23,8 @@
       "id": "BD0",
       "title": "Popup test harness (dev-only)",
       "priority": 1,
-      "status": "pending",
-      "passes": false,
+      "status": "passed",
+      "passes": true,
       "description": "Create test-harness/ serving the REAL popup.html + popup.js + sync-*.js on localhost with a chrome-shim.js: in-memory chrome.storage.local/sync, stubbed identity/runtime/alarms/contextMenus, window.confirm auto-accept logging to window.__confirmCalls, fetch shim capturing Supabase request bodies to window.__fetchLog, seedable fixtures (10 prompts, mixed tags/favorites/sensitive, optional uuids + cloud mode). Add test-harness/ to CLAUDE.md never-include list and verify it is not in the pack-and-ship zip command.",
       "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
       "acceptanceCriteria": [
@@ -46,7 +46,9 @@
         ],
         "needsHumanEye": []
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED, observed in Chrome. Mechanism: loader.js fetches real /popup.html, injects <base href=/> + chrome-shim.js before first script, runs in same-origin srcdoc iframe (natural DOMContentLoaded). Assert via popupFrame.contentWindow. Verified all 3 modes: local (10 cards, search 10->1->10, confirm shim logs+accepts), cloud (10 cards, 8 uuids, shim intercepted GET profiles + GET prompts pull, 'Cloud sync on' status, zero console errors on tracked load), sync (10 cards, clean). Cloud seed: 8 uuid'd + 2 local-only (BD3 uses this). pb_last_push seeded AFTER fixture updatedAt so no spurious first push. __fetchLog entries carry tombstonesAtSend snapshot for BD3 ordering assertion. Serve REPO ROOT: python3 -m http.server 5641."
+      ]
     },
     {
       "id": "BD1",

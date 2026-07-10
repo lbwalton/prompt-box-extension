@@ -131,7 +131,7 @@ The zip is saved directly to `/Users/labroiwalton/Projects/Deployed/Chrome Exten
 
 **Runtime files to include:** `manifest.json`, `popup.html`, `popup.js`, `sync-config.js`, `sync-auth.js`, `sync-engine.js`, `background.js`, `content.js`, `icon16.png`, `icon48.png`, `icon128.png`
 
-**Never include:** `node_modules/`, `package.json`, `package-lock.json`, `eslint.security.js`, `build.js`, `build.sh`, `CLAUDE.md`, `SECURITY-GUIDE.md`, `PRD.md`, `README.md`, `*.mdc`, `test-*.html`, legacy icon assets
+**Never include:** `node_modules/`, `package.json`, `package-lock.json`, `eslint.security.js`, `build.js`, `build.sh`, `CLAUDE.md`, `SECURITY-GUIDE.md`, `PRD.md`, `README.md`, `*.mdc`, `test-*.html`, `test-harness/`, `prd.json`, legacy icon assets
 
 ## Files You Can Ignore
 
@@ -140,3 +140,5 @@ The zip is saved directly to `/Users/labroiwalton/Projects/Deployed/Chrome Exten
 - `eslint.security.js` — security linting config.
 - `icons8-gear-50.png` — legacy asset, no longer referenced (replaced by inline SVG).
 - `test-auth.html` — test file, not part of core functionality.
+- `test-harness/` — dev-only localhost harness that runs the real popup against in-memory `chrome.*` shims (browser-tool verification; `chrome-extension://` pages are unreachable by automation). Serve the repo root (`python3 -m http.server 5641`), open `/test-harness/?mode=local|sync|cloud`. Never ship it.
+- `prd.json` — PRD-loop story backlog (dev process file).

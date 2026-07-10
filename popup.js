@@ -25,6 +25,11 @@ let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
 let storagePref = 'sync'; // 'sync' | 'local' | 'cloud' — loaded from chrome.storage.local on startup
 
+// Bulk selection state (session-only; never persisted)
+let selectionMode = false;
+const selectedIds = new Set();
+let visibleIds = []; // prompt ids currently rendered by displayFilteredPrompts
+
 // Tag combobox state
 let comboboxOpen = false;
 let comboboxHighlightIndex = -1;
@@ -242,6 +247,14 @@ function setupEventListeners() {
 
   // Pro badge → Settings > Account
   document.getElementById('proBadgeHeader')?.addEventListener('click', openAccountPanel);
+
+  // Bulk selection (multi-select + delete)
+  document.getElementById('selectModeBtn').addEventListener('click', toggleSelectionMode);
+  document.getElementById('bulkSelectAllBtn').addEventListener('click', selectAllVisible);
+  document.getElementById('bulkCancelBtn').addEventListener('click', exitSelectionMode);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && selectionMode) exitSelectionMode();
+  });
 }
 
 // ---- Pro badge (verified-style seal) ----
@@ -342,6 +355,17 @@ function handlePromptButtonClick(event) {
   if (!action || !promptId) return;
 
   const id = parseInt(promptId);
+
+  // Selection checkbox: membership toggle only (no ripple feedback on inputs)
+  if (action === 'toggle-select') {
+    if (button.checked) {
+      selectedIds.add(id);
+    } else {
+      selectedIds.delete(id);
+    }
+    updateBulkBar();
+    return;
+  }
 
   // Add visual feedback
   addButtonFeedback(button, action);
@@ -1053,6 +1077,46 @@ function togglePrivacyShield() {
   }
 }
 
+// ---- Bulk selection (multi-select + delete) ----
+function toggleSelectionMode() {
+  if (selectionMode) {
+    exitSelectionMode();
+    return;
+  }
+  selectionMode = true;
+  document.getElementById('selectModeBtn').classList.add('active');
+  document.body.classList.add('selection-mode');
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+function exitSelectionMode() {
+  selectionMode = false;
+  selectedIds.clear();
+  document.getElementById('selectModeBtn').classList.remove('active');
+  document.body.classList.remove('selection-mode');
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+// Add every currently visible (filtered) card to the selection.
+function selectAllVisible() {
+  visibleIds.forEach(function (id) { selectedIds.add(id); });
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  if (!bar) return;
+  bar.hidden = !selectionMode;
+  const n = selectedIds.size;
+  document.getElementById('bulkCount').textContent = n + ' selected';
+  const deleteBtn = document.getElementById('bulkDeleteBtn');
+  deleteBtn.textContent = 'Delete (' + n + ')';
+  deleteBtn.disabled = n === 0;
+}
+
 // Search prompts by title or content
 function searchPrompts() {
   const searchTerm = document.getElementById('searchBox').value.toLowerCase();
@@ -1125,6 +1189,7 @@ function filterAndSortPrompts() {
 // Display filtered prompts (used by search and sort functions)
 function displayFilteredPrompts(filteredPrompts) {
   const promptList = document.getElementById('promptList');
+  visibleIds = filteredPrompts.map(function (p) { return p.id; });
 
   if (filteredPrompts.length === 0) {
     promptList.innerHTML = `<div class="no-prompts">
@@ -1178,9 +1243,16 @@ function createPromptHTML(prompt) {
   const visibilityIcon = isSensitive ? ICONS.eyeClosed : ICONS.eyeOpen;
   const visibilityLabel = isSensitive ? 'Hidden' : 'Visible';
 
+  // Selection mode: checked state re-derived from selectedIds on every render
+  // so selections survive search/filter/sort re-renders.
+  const selectCheckbox = selectionMode
+    ? `<label class="select-check"><input type="checkbox" data-action="toggle-select" data-prompt-id="${prompt.id}"${selectedIds.has(prompt.id) ? ' checked' : ''} aria-label="Select ${escapeHTML(prompt.title)}"></label>`
+    : '';
+
   return `
     <div class="prompt-item">
       <div class="prompt-header">
+        ${selectCheckbox}
         <div class="prompt-title">${escapeHTML(prompt.title)}</div>
         <button class="star-btn ${starClass}" data-action="toggle-favorite" data-prompt-id="${prompt.id}">${starIcon}</button>
       </div>

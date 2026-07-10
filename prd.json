@@ -54,8 +54,8 @@
       "id": "BD1",
       "title": "Selection mode UI (Select toggle, checkboxes, action bar)",
       "priority": 2,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "Add Select button to toolbar; selectionMode + selectedIds Set (module-level, session-only); checkboxes on cards rendered from selectedIds in createPromptHTML; fixed bottom action bar with live count, Select all (visible set), Delete (N) disabled at 0, Cancel. Checkbox clicks via delegated handlePromptButtonClick data-action. Cancel/Escape exits and clears. CSS tokens only, dark-mode via existing overrides.",
       "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
       "acceptanceCriteria": [
@@ -88,7 +88,9 @@
           "action bar visual fit in the real popup (spacing, does not cover last card)"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness (local mode): 10/10 checkboxes, live count 0/3/10, Delete disabled at 0 + 'Delete (3)' enabled, Select all -> 10 checked, Cancel + Escape both exit and clear, normal-mode regression clean (star flips shim storage, edit opens form, single delete via shimmed confirm 10->9), zero console errors, dark-mode screenshot evidence. bulkDeleteBtn intentionally has NO click listener yet - bulkDeleteSelected + wiring land in BD2. LB eyeball: bar fit in real popup."
+      ]
     },
     {
       "id": "BD2",

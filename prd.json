@@ -205,8 +205,8 @@
       "id": "BD5",
       "title": "Whole-branch review + PR (build 1 land)",
       "priority": 6,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "Whole-branch subagent review of feature/bulk-delete (Phase 2 pattern), fix findings, re-verify affected stories, push branch, gh pr create with LB live-test checklist (real popup selection UX, real cloud bulk delete to device B, dark mode look). Merge only on LB word.",
       "acceptanceCriteria": [
         "review clean or findings fixed",
@@ -224,7 +224,9 @@
           "LB live-test checklist in PR body"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: whole-branch review (feature-dev reviewer) found 1 Critical + 3 Important, all real; fixed in eb5606f (victimIds snapshot; bulkDeleteInFlight re-entrancy guard + bar disable; escapeHTMLAttr for aria-label; deletePrompt evicts from selectedIds). All re-verified live in harness. Re-review verdict: READY, zero new issues; one sub-threshold cosmetic nit noted (transient count tick during concurrent per-card delete + in-flight bulk, cosmetic only). Reviewer follow-up ticket suggestion (pre-existing, out of scope): tag-name value=/data-original-name=/data-tag= attribute sinks also rely on quote-less escapeHTML - candidate for escapeHTMLAttr sweep in a later cycle. PR opened; merge gated on LB live test."
+      ]
     }
   ]
 }

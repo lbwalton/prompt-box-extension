@@ -353,8 +353,8 @@
       "id": "B3-5",
       "title": "Extension Upgrade UI + entitlement re-read",
       "priority": 11,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "Plan picker in #accountSignedIn (3 token-styled rows, shown when signed in AND not pro; #accountPlan shows active plan when pro), Upgrade button -> POST functionsBase/create-checkout with JWT -> chrome.tabs.create({url}) + 'finish in the new tab, then reopen' note; 409 hides lifetime with sold-out note; 401 -> re-sign-in prompt; entitlementEpoch guards all awaits; sync-config.js gains functionsBase. Harness: fetch shim route for create-checkout + tabs.create shim.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -382,7 +382,9 @@
           "real checkout round trip (folded into B3-4 LB item)"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness. Free signed-in (?mode=cloud&pro=0): picker visible with 3 plans, POST body {plan:'annual'}, Authorization header === 'Bearer '+session token (verified via in-page comparison; the browser tool redacts token-shaped values so assert with verdict strings), checkout URL opened via chrome.tabs.create shim, status copy set, button re-enabled. 409 route: lifetime row hidden, selection falls back to monthly, sold-out copy, no tab. Pro variant: picker hidden, 'Plan: Founding Lifetime' line, vivid badge. Zero console errors both variants. NEW pb_plan storage key cached alongside pb_is_pro (cleared on sign-out) -> B3-7 must document it. HARNESS FIX: loader now cache-busts popup.html + all scripts (?v=timestamp) - a stale cached sync-config.js made fetch hit a relative undefined/ URL and dodge the interceptor; classic 'verifying yesterday's code' trap, now impossible."
+      ]
     },
     {
       "id": "B3-6",

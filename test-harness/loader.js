@@ -15,14 +15,23 @@
     if (a.getAttribute('data-mode') === mode) a.classList.add('active');
   });
 
-  fetch('/popup.html')
+  var bust = Date.now();
+  fetch('/popup.html', { cache: 'no-store' })
     .then(function (res) {
       if (!res.ok) throw new Error('could not fetch /popup.html (' + res.status + '). Serve the REPO ROOT, not test-harness/.');
       return res.text();
     })
     .then(function (html) {
-      var cfg = '<script>window.__HARNESS_CONFIG = ' + JSON.stringify({ mode: mode }) + ';<\/script>';
-      var shimTag = '<script src="/test-harness/chrome-shim.js"><\/script>';
+      var allParams = {};
+      params.forEach(function (v, k) { allParams[k] = v; });
+      allParams.mode = mode;
+      // Cache-bust every script the popup loads: a stale cached sync-*.js
+      // otherwise silently verifies yesterday's code.
+      html = html.replace(/<script src="([^"?]+)">/gi, function (_m, src) {
+        return '<script src="' + src + '?v=' + bust + '">';
+      });
+      var cfg = '<script>window.__HARNESS_CONFIG = ' + JSON.stringify(allParams) + ';<\/script>';
+      var shimTag = '<script src="/test-harness/chrome-shim.js?v=' + bust + '"><\/script>';
       // Relative asset/script URLs must resolve against the repo root, not /test-harness/.
       html = html.replace(/<head>/i, '<head><base href="/">');
       var firstScript = html.search(/<script\s/i);

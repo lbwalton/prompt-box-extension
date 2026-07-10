@@ -270,11 +270,15 @@ function setupEventListeners() {
 // signed out can't apply its stale answer afterwards.
 let entitlementEpoch = 0;
 
+// Whether renderAccount last saw a live session (drives the plan picker).
+let accountSignedIn = false;
+
 // Paints instantly from the pb_is_pro cache; refreshCloudOption updates the
 // cache on every DEFINITIVE entitlement answer. Display state only — gates nothing.
 function renderProBadge() {
-  chrome.storage.local.get(['pb_is_pro'], function (r) {
+  chrome.storage.local.get(['pb_is_pro', 'pb_plan'], function (r) {
     const isPro = r.pb_is_pro === true;
+    renderPlanPicker(isPro, r.pb_plan || null);
     const label = isPro ? 'Prompt Box Pro member' : 'Get Prompt Box Pro';
     const header = document.getElementById('proBadgeHeader');
     const account = document.getElementById('proBadgeAccount');
@@ -315,17 +319,103 @@ async function renderAccount() {
     signedOut.style.display = 'none';
     signedIn.style.display = 'block';
     document.getElementById('accountEmail').textContent = session.email;
+    accountSignedIn = true;
   } else {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
+    accountSignedIn = false;
   }
+  renderProBadge(); // instant picker/plan paint from cache; the fetch below refines it
   refreshCloudOption();
+}
+
+// ---- Upgrade to Pro (plan picker + Stripe Checkout hand-off) ----
+const PLAN_LABELS = new Map([
+  ['monthly', 'Pro Monthly'],
+  ['annual', 'Pro Annual'],
+  ['lifetime', 'Founding Lifetime'],
+]);
+
+// Picker shows only when signed in AND not Pro; Pro users see their plan name.
+function renderPlanPicker(isPro, plan) {
+  const section = document.getElementById('upgradeSection');
+  const planLine = document.getElementById('accountPlan');
+  if (!section) return;
+  section.style.display = accountSignedIn && !isPro ? 'block' : 'none';
+  if (planLine) {
+    planLine.textContent = isPro ? 'Plan: ' + (PLAN_LABELS.get(plan) || 'Pro') : '';
+  }
+}
+
+function hideLifetimeOption() {
+  const row = document.getElementById('planLifetimeRow');
+  if (!row) return;
+  const radio = row.querySelector('input');
+  if (radio && radio.checked) {
+    const monthly = document.querySelector('input[name="proPlan"][value="monthly"]');
+    if (monthly) monthly.checked = true;
+  }
+  row.style.display = 'none';
+}
+
+async function startUpgrade() {
+  const statusEl = document.getElementById('upgradeStatus');
+  const btn = document.getElementById('upgradeBtn');
+  const selected = document.querySelector('input[name="proPlan"]:checked');
+  if (!statusEl || !btn || !selected) return;
+  const epoch = entitlementEpoch;
+  btn.disabled = true;
+  statusEl.textContent = 'Preparing checkout…';
+  try {
+    const token = await PBAuth.getAccessToken();
+    if (epoch !== entitlementEpoch) return;
+    if (!token) {
+      statusEl.textContent = 'Session expired — please sign in again.';
+      return;
+    }
+    const res = await fetch(PB_SYNC_CONFIG.functionsBase + '/create-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: PB_SYNC_CONFIG.supabaseAnonKey,
+        Authorization: 'Bearer ' + token,
+      },
+      body: JSON.stringify({ plan: selected.value }),
+    });
+    if (epoch !== entitlementEpoch) return;
+    if (res.status === 409) {
+      hideLifetimeOption();
+      statusEl.textContent = 'Founding Lifetime is sold out — pick another plan.';
+      return;
+    }
+    if (res.status === 401) {
+      statusEl.textContent = 'Session expired — please sign in again.';
+      return;
+    }
+    if (!res.ok) {
+      statusEl.textContent = 'Could not start checkout. Please try again.';
+      return;
+    }
+    const data = await res.json();
+    if (!data || typeof data.url !== 'string') {
+      statusEl.textContent = 'Could not start checkout. Please try again.';
+      return;
+    }
+    chrome.tabs.create({ url: data.url });
+    statusEl.textContent = 'Finish checkout in the new tab, then reopen Prompt Box.';
+  } catch (e) {
+    statusEl.textContent = 'Network error — please try again.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function setupAccountUI() {
   const signInBtn = document.getElementById('signInBtn');
   const signOutBtn = document.getElementById('signOutBtn');
   const status = document.getElementById('authStatus');
+  const upgradeBtn = document.getElementById('upgradeBtn');
+  if (upgradeBtn) upgradeBtn.addEventListener('click', startUpgrade);
   if (signInBtn) {
     signInBtn.addEventListener('click', async function () {
       entitlementEpoch++;
@@ -344,7 +434,7 @@ function setupAccountUI() {
       entitlementEpoch++;
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
-      chrome.storage.local.set({ pb_is_pro: false }, renderProBadge);
+      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
       chrome.storage.local.remove('pb_sync_offer_dismissed');
       await renderAccount();
     });
@@ -778,7 +868,7 @@ async function refreshCloudOption() {
   // Definitive answer (non-null): refresh the badge cache. A transient null
   // never changes it — same rule as the cloud-mode demotion below.
   if (ent) {
-    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true }, renderProBadge);
+    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, renderProBadge);
   }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';

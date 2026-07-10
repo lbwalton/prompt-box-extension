@@ -7,6 +7,10 @@ const PB_SYNC_CONFIG = {
   get authRedirect() {
     return chrome.identity.getRedirectURL();
   },
+  // Edge Functions base (create-checkout lives here). Public value.
+  get functionsBase() {
+    return this.supabaseUrl + '/functions/v1';
+  },
   stripePrices: {
     monthly: 'price_1TpZLQGuSTSqtrBZDOq0hOBv',
     annual: 'price_1TpZNQGuSTSqtrBZ94zcxFxR',

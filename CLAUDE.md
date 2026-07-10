@@ -53,16 +53,32 @@ If `npm run security` reports errors, fix them before staging. Warnings should b
 ## Data Schema (chrome.storage.local)
 
 ```
-prompts: [{ id, title, text, tags[], shortcut, isFavorite, isSensitive, createdAt, updatedAt }]
+prompts: [{ id, title, text, tags[], shortcut, isFavorite, isSensitive, createdAt, updatedAt, uuid? }]
 availableTags: [{ name, isDefault, isFavorite }]
 filterSettings: { tagFilter, sortBy }
 theme: 'light' | 'dark' | 'auto'
 new_update_available: boolean
 tempSelectedText: string
+storagePref: 'sync' | 'local' | 'cloud'
+```
+
+Prompt Box Pro keys (all in `chrome.storage.local`, present only after sign-in / cloud use):
+
+```
+pb_session: { access_token, refresh_token, expires_at, email, user_id }
+pb_is_pro: boolean            — display cache; the webhook-written Supabase profiles row is the truth
+pb_plan: 'monthly' | 'annual' | 'lifetime' | null — display cache, set with pb_is_pro
+pb_sync_offer_dismissed: boolean — "Not now" on the cloud sync onboarding banner
+pb_last_push: number (ms)     — push cursor (prompts with newer updatedAt still need pushing)
+pb_last_pull: ISO string      — pull cursor for delta pulls
+pb_tombstones: [{ uuid, deleted_at }] — deletes queued for the next push
+pb_sync_user: string          — Supabase user id the cursors/tombstones belong to; mismatch with
+                                pb_session.user_id triggers a sync-state reset + uuid re-mint
 ```
 
 - `shortcut`: optional lowercase string (no spaces), used by content.js for text expansion. Must be unique across all prompts.
 - `isSensitive`: boolean, defaults to `true`. Controls privacy blur on card preview text.
+- `uuid`: the prompt's cloud primary key (Supabase `prompts.id`); minted on first cloud push. Losing it on edit forks a duplicate cloud row — always preserve it.
 
 Default tags (read-only): General, Writing, Coding, Research, Creative, Business, Favorite.
 

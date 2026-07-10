@@ -68,8 +68,16 @@ signed-out or local-only users; local-only remains the default.
 
 ### Data stored locally (`chrome.storage.local`)
 - Prompt library (titles, text, tags, shortcuts)
-- Storage location preference (`sync` or `local`)
+- Storage location preference (`sync`, `local`, or `cloud`)
 - Temporary selected text (passed from content script to popup, cleared immediately after use)
+- **Prompt Box Pro only** (present only after the user signs in): the sign-in session
+  (`pb_session` — access/refresh tokens, account email, account id), a local copy of the
+  subscription status (`pb_is_pro`, `pb_plan`), the cloud-sync bookkeeping needed to sync
+  reliably (`pb_last_push`, `pb_last_pull` cursors, `pb_tombstones` — a queue of deletions
+  waiting to reach the server, and `pb_sync_user` — which account the bookkeeping belongs to),
+  and whether the user dismissed the cloud-sync offer banner (`pb_sync_offer_dismissed`).
+  All of these stay on the device and are cleared on sign-out (session, status) or kept only
+  as sync bookkeeping; none are readable by websites.
 
 ### Data stored via Chrome Sync (`chrome.storage.sync`)
 - Prompt library (when user selects Chrome Sync mode)
@@ -86,6 +94,17 @@ This data is managed entirely by Chrome's built-in storage APIs. When a user cho
 - Data sent: survey response (yes/no/dismiss) and a timestamp
 - No personally identifiable information is collected or transmitted
 - The survey endpoint is a Cloudflare Worker — Cloudflare may log standard request metadata (IP address) per their standard infrastructure logging
+
+**Supabase backend** (`https://jmxmtiqkpegqywderwkt.supabase.co`) — Prompt Box Pro only:
+- Sign-in (Google OAuth via Supabase Auth) and, when the user turns on Cloud sync, storing and
+  retrieving their prompt library (encrypted in transit and at rest)
+- When the user clicks Upgrade, the extension asks our server for a Stripe Checkout link; the
+  extension sends only the chosen plan name with the user's sign-in token
+
+**Stripe Checkout** (`checkout.stripe.com`) — Prompt Box Pro upgrades only:
+- Payment happens entirely on Stripe's hosted page, opened in a normal browser tab
+- The extension never sees, collects, or stores card numbers or any payment details; it only
+  learns the resulting subscription status (Pro or not) from our Supabase backend
 
 **No other external connections.** The extension makes no analytics calls, sends no telemetry, and has no third-party SDKs or trackers.
 
@@ -108,7 +127,7 @@ This data is managed entirely by Chrome's built-in storage APIs. When a user cho
 
 | Version | Change |
 |---------|--------|
-| 4.0.0 | Prompt Box Pro cloud sync: when enabled, prompts are stored on our Supabase backend so they sync across devices. Adds the alarms permission for periodic background sync. Local-only remains the default; nothing leaves the device unless the user signs in and turns on Cloud sync. |
+| 4.0.0 | Prompt Box Pro cloud sync: when enabled, prompts are stored on our Supabase backend so they sync across devices. Adds the alarms permission for periodic background sync. Local-only remains the default; nothing leaves the device unless the user signs in and turns on Cloud sync. Pro billing: upgrading opens Stripe Checkout in a browser tab — payment details are entered only on Stripe's hosted page, never in the extension; the extension stores only a local copy of the resulting subscription status. Documents the pb_* local storage keys (session, subscription status cache, sync cursors/tombstones). |
 | 3.4.0 | Added clipboardWrite permission for the expansion fallback (copies the user's own prompt to their clipboard on their explicit shortcut action); no data leaves the device |
 | 3.2.1 | Bug fix release — no permission or data handling changes |
 | 3.2.0 | Added Chrome Sync storage option; added survey endpoint disclosure |

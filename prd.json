@@ -421,8 +421,8 @@
       "id": "B3-7",
       "title": "Docs debt: privacy practices + CLAUDE.md pb_* keys (+ store listing check)",
       "priority": 13,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "prompt-box-privacy-practices.md: pb_* keys disclosure, sync-or-local storage line, changelog table row. Project CLAUDE.md Data Schema: same keys incl. pb_sync_user. Verify store listing needs no permission-change edits (checkout is a plain tab). NO version bump / CHANGELOG (store-upload prep only).",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -441,7 +441,9 @@
           "LB: privacy page on promptboxapp.com needs the same disclosure before 4.0.0 store upload (site repo, separate)"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED. All 8 pb_* keys (incl. new pb_plan + pb_sync_user) grep-verified in BOTH prompt-box-privacy-practices.md and CLAUDE.md; storage-pref line now says sync/local/cloud; External Connections gains Supabase-Pro and Stripe Checkout sections (payment only on Stripe's hosted page, extension never sees card data); 4.0.0 changelog row extended with billing + pb_* disclosure. CLAUDE.md schema also documents uuid preservation rule and the pb_sync_user mismatch semantics. manifest still 3.4.0, no version bump. Store listing checked: Pro/cloud paragraph present, billing adds no permissions - pricing copy can be added at 4.0.0 upload prep. Remaining LB: mirror disclosure on promptboxapp.com/privacy (site repo) before store upload."
+      ]
     },
     {
       "id": "B3-8",

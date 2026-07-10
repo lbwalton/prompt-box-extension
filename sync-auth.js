@@ -41,7 +41,7 @@
     return u.email || null;
   }
 
-  async function signIn() {
+  async function signInViaWebAuthFlow() {
     const authorizeUrl =
       cfg().supabaseUrl + '/auth/v1/authorize?provider=google&redirect_to=' +
       encodeURIComponent(cfg().authRedirect);
@@ -66,6 +66,22 @@
     const session = { ...tokens, email };
     await storeSession(session);
     return { email };
+  }
+
+  // The real OAuth flow must NOT run in the toolbar popup: opening the auth
+  // window closes the popup and kills its JS mid-flow. The popup delegates to
+  // the service worker (background.js), which runs signInViaWebAuthFlow and
+  // stores the session; the popup (if still alive) gets the result back.
+  async function signIn() {
+    if (typeof window === 'undefined') {
+      // Service worker context: run the actual flow.
+      return signInViaWebAuthFlow();
+    }
+    const resp = await chrome.runtime.sendMessage({ type: 'pb-signin' });
+    if (!resp || !resp.ok) {
+      throw new Error(resp && resp.error ? resp.error : 'sign-in failed');
+    }
+    return { email: resp.email };
   }
 
   // Returns the next session on success, null when the refresh token is

@@ -49,6 +49,19 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// Sign-in runs here (not in the popup) so the OAuth flow survives the popup
+// closing when the auth window takes focus. PBAuth.signIn in a worker context
+// runs the real chrome.identity flow and stores the session.
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.type === 'pb-signin') {
+    PBAuth.signIn().then(
+      (r) => sendResponse({ ok: true, email: r.email }),
+      (e) => sendResponse({ ok: false, error: e && e.message ? e.message : 'sign-in failed' })
+    );
+    return true; // keep the message channel open for the async response
+  }
+});
+
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "saveToPromptBox") {
     const selectedText = info.selectionText;

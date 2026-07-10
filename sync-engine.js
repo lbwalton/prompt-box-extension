@@ -101,8 +101,11 @@
   }
   function _rowToLocal(row, existing) {
     return {
-      // Keep the device-local numeric id if we already have this prompt;
-      // otherwise use the uuid as the local id (strings compare fine via ==).
+      // Keep the device-local numeric id if we already have this prompt.
+      // For rows new to this device the uuid lands here temporarily and is
+      // replaced by a unique numeric id in pullRemoteChanges' normalization
+      // pass (local ids must stay numeric: the popup's click handlers
+      // parseInt them).
       id: existing && existing.id != null ? existing.id : row.id,
       uuid: row.id,
       title: row.title || '',
@@ -217,6 +220,23 @@
         if (!p.uuid) merged.push(p);
       }
       for (const p of byUuid.values()) merged.push(p);
+
+      // Local ids must stay numeric (popup click handlers parseInt them).
+      // Assign fresh unique numeric ids to rows new from the cloud and to any
+      // string ids persisted by earlier builds; flag changed so callers persist.
+      const usedIds = new Set();
+      for (const p of merged) {
+        if (typeof p.id === 'number') usedIds.add(p.id);
+      }
+      let nextLocalId = Date.now();
+      for (const p of merged) {
+        if (typeof p.id !== 'number') {
+          while (usedIds.has(nextLocalId)) nextLocalId++;
+          p.id = nextLocalId++;
+          usedIds.add(p.id);
+          changed = true;
+        }
+      }
 
       return { ok: true, changed, prompts: merged, cursor: maxUpdated };
     } catch (e) {

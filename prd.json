@@ -261,8 +261,8 @@
       "id": "B3-2",
       "title": "Edge Function create-checkout",
       "priority": 8,
-      "status": "pending",
-      "passes": false,
+      "status": "passed",
+      "passes": true,
       "description": "supabase/functions/create-checkout/index.ts: JWT verify (401), plan allowlist from env price IDs (400), lifetime 100-cap via lifetime_count() (409 lifetime_sold_out), create/reuse stripe_customer_id (service role), Checkout Session (subscription vs payment mode, client_reference_id + metadata.user_id + metadata.plan), returns {url}. CORS for extension origin + OPTIONS.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -281,7 +281,9 @@
         "needsHumanEye": [],
         "notes-inline": "live 401/400/409 curls + checkout URL creation verified in B3-4 once deployed"
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED. deno 2.9.2 installed via brew; deno check exits 0 (npm:stripe@17.7.0 + jsr:@supabase/supabase-js@2.110.2). Added supabase/functions/deno.json (nodeModulesDir auto) + .gitignore for its node_modules - required because the repo's package.json puts deno in byonm mode. Secret scan clean. Flow: OPTIONS/405 guard -> env presence 500 -> JWT via anon getUser 401 -> plan allowlist hasOwnProperty 400 -> lifetime_count() rpc 409 at 100 -> reuse/create stripe customer (persist id via service role) -> Checkout Session (payment vs subscription mode, user_id in client_reference_id + metadata + subscription_data.metadata) -> {url}. Stripe errors caught -> plain 500, no detail leak. Live curls land in B3-4."
+      ]
     },
     {
       "id": "B3-3",

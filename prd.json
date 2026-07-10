@@ -390,8 +390,8 @@
       "id": "B3-6",
       "title": "Sync-state hygiene: pb_sync_user reset + expiry badge + retry-pending-push",
       "priority": 12,
-      "status": "pending",
-      "passes": false,
+      "status": "passed",
+      "passes": true,
       "description": "Session stores user_id (captured with email at sign-in); pb_sync_user written when cloud sync engages; loadPrompts cloud path resets sync state on user mismatch; definitive session invalidation clears pb_is_pro (badge cannot survive expiry); popup open in cloud mode retries pending pushes (queued tombstones or updatedAt > pb_last_push) after the initial pull settles.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -413,7 +413,9 @@
         ],
         "needsHumanEye": []
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED, all variants observed in harness. (a) mismatch: exactly 1 resetSyncState (now also removes pb_sync_user), owner rewritten, foreign tombstone wiped, PLUS a fix found during verification: post-reset retry-push was re-uploading prompts still carrying the PREVIOUS account's uuids (PK collision with rows the new account can't update -> RLS fails the whole upsert -> sync stalls); mismatch path now strips uuids before persisting, verified 10 rows re-pushed with all-fresh uuids. (b) expired: refresh 401 -> session cleared -> pb_is_pro/pb_plan cleared + badge dimmed + signed-out block (transient refresh failures keep the badge: guarded on pb_session actually gone from storage). (c) pending: on idle open, 2 homogeneous POSTs - the 1 edited prompt + the 1 queued tombstone, queue flushed, cursor advanced, no user action. Regression: plain cloud open = 0 POSTs, uuids untouched. Session now carries user_id (sync-auth fetchUser); getSession returns userId."
+      ]
     },
     {
       "id": "B3-7",

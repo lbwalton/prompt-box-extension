@@ -88,21 +88,39 @@
     });
     // ?pro=0 -> signed in but FREE (upsell state): local storage mode, no
     // entitlement; the profiles route below answers is_pro:false to match.
+    // ?expired=1 -> session past expiry AND the token refresh route 401s:
+    //   getSession() must clear the session and the badge must demote.
+    // ?mismatch=1 -> pb_sync_user belongs to a DIFFERENT account than the
+    //   session: cursors + tombstones must be reset exactly once.
+    // ?pending=1 -> a queued tombstone + an edited prompt newer than the push
+    //   cursor: a push must fire on open with no user edit.
     var isPro = config.pro !== '0';
+    var expired = config.expired === '1';
+    var mismatch = config.mismatch === '1';
+    var pending = config.pending === '1';
     localSeed = {
       storagePref: isPro ? 'cloud' : 'local',
       prompts: seededPrompts,
       pb_session: {
         access_token: 'harness-access-token',
         refresh_token: 'harness-refresh-token',
-        expires_at: Date.now() + 6 * 3600 * 1000, // far from the 60s refresh window
+        expires_at: expired ? Date.now() - 60 * 1000 : Date.now() + 6 * 3600 * 1000,
         email: 'harness@promptbox.test',
+        user_id: 'harness-user-0001',
       },
       pb_is_pro: isPro,
       pb_plan: isPro ? 'lifetime' : null,
       pb_last_push: T0 + 100000, // after every fixture updatedAt: no spurious first push
       pb_last_pull: new Date(T0 + 100000).toISOString(),
+      pb_sync_user: mismatch ? 'previous-account-9999' : 'harness-user-0001',
     };
+    if (mismatch || pending) {
+      localSeed.pb_tombstones = [{ uuid: '00000000-0000-4000-8000-00000000dead', deleted_at: new Date(T0).toISOString() }];
+    }
+    if (pending) {
+      // One prompt edited after the push cursor -> pendingEdits true.
+      seededPrompts[0].updatedAt = T0 + 200000;
+    }
   } else {
     seededPrompts = clone(FIXTURES);
     localSeed = { storagePref: 'local', prompts: seededPrompts };
@@ -233,6 +251,10 @@
       return Promise.resolve(jsonResponse(204, ''));
     }
     if (url.indexOf('/auth/v1/token') !== -1) {
+      if (config.expired === '1') {
+        // Definitive refresh rejection: getSession must clear the session.
+        return Promise.resolve(jsonResponse(401, { error: 'invalid_grant' }));
+      }
       return Promise.resolve(jsonResponse(200, {
         access_token: 'harness-access-token',
         refresh_token: 'harness-refresh-token',

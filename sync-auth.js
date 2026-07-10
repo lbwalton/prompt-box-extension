@@ -34,11 +34,11 @@
     return { access_token, refresh_token, expires_at: Date.now() + expires_in * 1000 };
   }
 
-  async function fetchUserEmail(access_token) {
+  async function fetchUser(access_token) {
     const res = await fetch(cfg().supabaseUrl + '/auth/v1/user', { headers: authHeaders(access_token) });
     if (!res.ok) throw new Error('user fetch failed: ' + res.status);
     const u = await res.json();
-    return u.email || null;
+    return { email: u.email || null, user_id: u.id || null };
   }
 
   async function signInViaWebAuthFlow() {
@@ -62,10 +62,12 @@
     }
     const tokens = parseRedirect(redirectUrl);
     if (!tokens) throw new Error('no tokens in redirect');
-    const email = await fetchUserEmail(tokens.access_token);
-    const session = { ...tokens, email };
+    const u = await fetchUser(tokens.access_token);
+    // user_id travels with the session so sync state can be keyed to the
+    // account (pb_sync_user) and reset on account mismatch.
+    const session = { ...tokens, email: u.email, user_id: u.user_id };
     await storeSession(session);
-    return { email };
+    return { email: u.email };
   }
 
   // The real OAuth flow must NOT run in the toolbar popup: opening the auth
@@ -103,6 +105,7 @@
       refresh_token: d.refresh_token || session.refresh_token,
       expires_at: Date.now() + (d.expires_in || 3600) * 1000,
       email: session.email,
+      user_id: session.user_id,
     };
     await storeSession(next);
     return next;
@@ -123,7 +126,7 @@
       if (!next) { await clearSession(); return null; }
       s = next;
     }
-    return { accessToken: s.access_token, email: s.email };
+    return { accessToken: s.access_token, email: s.email, userId: s.user_id || null };
   }
 
   async function getAccessToken() {

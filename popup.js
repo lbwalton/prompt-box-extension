@@ -324,6 +324,15 @@ async function renderAccount() {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
     accountSignedIn = false;
+    // Definitive sign-out/expiry only: when the stored session is GONE (the
+    // refresh token was rejected and getSession cleared it), the vivid badge
+    // must not survive. A transient refresh failure keeps pb_session in
+    // storage and changes nothing here (offline-first).
+    chrome.storage.local.get(['pb_session'], function (r) {
+      if (!r.pb_session) {
+        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+      }
+    });
   }
   renderProBadge(); // instant picker/plan paint from cache; the fetch below refines it
   refreshCloudOption();
@@ -604,7 +613,7 @@ function hideForm() {
 // Load all prompts from Chrome storage, respecting the user's storagePref
 function loadPrompts() {
   // Always read storagePref from local (it lives locally regardless of sync setting)
-  chrome.storage.local.get(['storagePref', 'prompts', 'syncFallback'], function (localResult) {
+  chrome.storage.local.get(['storagePref', 'prompts', 'syncFallback', 'pb_session', 'pb_sync_user'], function (localResult) {
     storagePref = localResult.storagePref || 'sync';
     updateStoragePrefUI();
 
@@ -615,18 +624,44 @@ function loadPrompts() {
       displayPrompts(); // instant paint, offline-safe
       chrome.storage.sync.get(['availableTags', 'filterSettings'], function (syncResult) {
         finishLoadPrompts(prompts, syncResult, localResult);
-        const pulledFrom = prompts;
-        PBSync.pullRemoteChanges(prompts).then(function (res) {
-          if (res && res.ok && prompts === pulledFrom) {
-            if (res.changed) {
-              prompts = res.prompts;
-              chrome.storage.local.set({ prompts: prompts });
-              rerenderPrompts();
+        // Sync state is keyed to an account. A session belonging to a
+        // DIFFERENT user than the one the cursors/tombstones were built for
+        // (silent expiry + new sign-in skips the sign-out reset) must start
+        // clean, or cursors and queued tombstones cross accounts.
+        const sessionUser = (localResult.pb_session && localResult.pb_session.user_id) || null;
+        const syncUser = localResult.pb_sync_user || null;
+        const ensureSyncOwner = (sessionUser && syncUser && sessionUser !== syncUser)
+          ? PBSync.resetSyncState().then(function () {
+            // The local library was keyed to the previous account: its uuids
+            // are that account's cloud primary keys. Strip them so the next
+            // push mints fresh rows for THIS account instead of colliding
+            // with rows it cannot update (RLS would fail the whole upsert).
+            prompts.forEach(function (p) { delete p.uuid; });
+            return new Promise(function (res) {
+              chrome.storage.local.set({ prompts: prompts, pb_sync_user: sessionUser }, res);
+            });
+          })
+          : (sessionUser && !syncUser
+            ? new Promise(function (res) { chrome.storage.local.set({ pb_sync_user: sessionUser }, res); })
+            : Promise.resolve());
+        ensureSyncOwner.then(function () {
+          const pulledFrom = prompts;
+          PBSync.pullRemoteChanges(prompts).then(function (res) {
+            if (res && res.ok && prompts === pulledFrom) {
+              if (res.changed) {
+                prompts = res.prompts;
+                chrome.storage.local.set({ prompts: prompts });
+                rerenderPrompts();
+              }
+              PBSync.commitPullCursor(res.cursor);
             }
-            PBSync.commitPullCursor(res.cursor);
-          }
-          updateSyncStatus();
-        }).catch(function () { updateSyncStatus(); });
+            updateSyncStatus();
+            retryPendingPush();
+          }).catch(function () {
+            updateSyncStatus();
+            retryPendingPush();
+          });
+        });
       });
       return;
     }
@@ -687,6 +722,32 @@ function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
     if (settings.sortBy) document.getElementById('sortBy').value = settings.sortBy;
     filterAndSortPrompts();
   }
+}
+
+// A push that failed while the popup was open (or a first migration that
+// 403'd) used to stay queued until the NEXT edit. On popup open, if anything
+// is pending — queued tombstones or prompts newer than the push cursor —
+// send it now. pushLocalChanges itself is a no-op (no network) when idle.
+function retryPendingPush() {
+  if (storagePref !== 'cloud') return;
+  chrome.storage.local.get(['pb_tombstones', 'pb_last_push'], function (state) {
+    const lastPush = state.pb_last_push || 0;
+    const pendingTombstones = (state.pb_tombstones || []).length > 0;
+    const pendingEdits = prompts.some(function (p) { return (p.updatedAt || 0) > lastPush; });
+    if (!pendingTombstones && !pendingEdits) return;
+    const arr = prompts;
+    // Same ordering as savePrompts: persist uuid backfill BEFORE pushing so a
+    // popup close mid-push can't fork duplicate cloud rows.
+    PBSync.ensureUuids(arr);
+    chrome.storage.local.set({ prompts: arr }, function () {
+      PBSync.pushLocalChanges(arr).then(function () {
+        if (prompts === arr) {
+          chrome.storage.local.set({ prompts: arr });
+        }
+        updateSyncStatus();
+      }).catch(function () { updateSyncStatus(); });
+    });
+  });
 }
 
 // Re-paint the whole prompt list from the current in-memory `prompts` array.

@@ -135,7 +135,10 @@
     const s = await readSession();
     if (s && s.access_token) {
       try {
-        await fetch(cfg().supabaseUrl + '/auth/v1/logout', { method: 'POST', headers: authHeaders(s.access_token) });
+        // scope=local: sign out THIS device only. The default (global) revokes
+        // every device's refresh token, silently signing out the user's other
+        // browsers — live-confirmed via Supabase auth logs.
+        await fetch(cfg().supabaseUrl + '/auth/v1/logout?scope=local', { method: 'POST', headers: authHeaders(s.access_token) });
       } catch (e) { /* best effort */ }
     }
     await clearSession();

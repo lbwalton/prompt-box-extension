@@ -47,11 +47,29 @@ document.addEventListener('DOMContentLoaded', function () {
   renderProBadge();
   loadPrompts();
   setupEventListeners();
+  checkPendingSelection();
   checkUpdateStatus();
   setupAccountUI();
   renderAccount();
   updateSyncStatus();
 });
+
+// Right-click "Save to Prompt Box" stores the selection; prefill the Add form
+// with it on open, then clear it so it doesn't reappear next time.
+function checkPendingSelection() {
+  chrome.storage.local.get(['tempSelectedText'], function (r) {
+    const text = r.tempSelectedText;
+    if (!text) return;
+    chrome.storage.local.remove('tempSelectedText');
+    const form = document.getElementById('promptForm');
+    const textEl = document.getElementById('promptText');
+    if (!form || !textEl) return;
+    // Open the Add form exactly as the "+ Add" button does (resets state, sets
+    // the Save label, focuses the title), then prefill the selected text.
+    showAddForm();
+    textEl.value = sanitizeInput(text, 'text');
+  });
+}
 
 // Theme: load saved preference on startup
 function loadSavedTheme() {

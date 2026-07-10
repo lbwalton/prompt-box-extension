@@ -133,8 +133,8 @@
       "id": "BD3",
       "title": "Bulk delete — cloud mode tombstones",
       "priority": 4,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "In cloud mode, before the single save: await PBSync.recordTombstone(uuid) sequentially for every selected prompt WITH a uuid; no-uuid prompts delete with no tombstone. The save's push then flushes prompts + all tombstones (existing two-homogeneous-POST design). Never bypass deletePrompt/recordTombstone semantics.",
       "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
       "acceptanceCriteria": [
@@ -162,7 +162,9 @@
           "real two-device propagation (LB: bulk delete on device A disappears on device B) — covered in PR live-test checklist"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness cloud mode (8 uuid'd + 2 no-uuid seeded; selected 4 uuid'd + 1 no-uuid). Observed: exactly ONE POST /rest/v1/prompts for the whole delete (changedRows=0 since fixtures predate pb_last_push cursor); body = exactly the 4 expected uuids, homogeneous {id, deleted_at, updated_at} rows with updated_at===deleted_at; tombstonesAtSend=4 (queue populated BEFORE push fired); pb_tombstones empty after flush; storage+DOM 10->5; no-uuid victim (Client Billing Notes) deleted locally, absent from every POST; other no-uuid prompt (Daily Standup) survived; zero console errors. LESSON: first probe raced the async chain at 900ms during an extension reconnect and looked like a hang - poll for completion instead of fixed sleeps. Remaining human item: real two-device propagation (PR checklist)."
+      ]
     },
     {
       "id": "BD4",

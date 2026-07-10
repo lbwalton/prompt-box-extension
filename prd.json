@@ -450,8 +450,8 @@
       "id": "B3-8",
       "title": "Whole-branch review + PR (build 2 land)",
       "priority": 14,
-      "status": "in-progress",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "Whole-branch subagent review of feature/pro-b2-phase3-billing (functions + migration + extension changes), fix findings, re-verify, push, gh pr create with LB runbook + live-test checklist. Merge on LB word. If PR #5 merged first, rebase onto main before the PR.",
       "acceptanceCriteria": [
         "review clean or fixed",
@@ -469,7 +469,9 @@
           "LB runbook + live checklist in PR body"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: whole-branch review found 1 Critical (mismatch design silently uploaded the previous account's cached prompts into the new account's cloud; backgroundPull unaware of accounts) -> fixed 8d0edc5 (drop-don't-adopt + disarm cloud + backgroundPull guard), harness re-verified. Re-review verdict: READY - Critical RESOLVED, zero new reportable issues; two ~30-40 confidence timing notes (refreshCloudOption racing reconciliation - self-corrects on reopen; webhook NULL-plan .neq edge) recorded, not blocking. Reviewer verified clean: RLS both-policy upsert trace, tombstone WITH CHECK via 0002 default, signature-before-parse, claim/release idempotency race-safety, no secrets, XSS/CSP, pack list, docs accuracy. PR opened; merge gated on LB runbook + live test."
+      ]
     }
   ]
 }

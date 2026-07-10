@@ -289,8 +289,8 @@
       "id": "B3-3",
       "title": "Edge Function stripe-webhook (signatures, idempotency, only-writer, cap)",
       "priority": 9,
-      "status": "pending",
-      "passes": false,
+      "status": "passed",
+      "passes": true,
       "description": "supabase/functions/stripe-webhook/index.ts: constructEventAsync signature verify (400 on bad sig), stripe_events insert-or-skip idempotency, checkout.session.completed -> is_pro/plan/stripe_customer_id via service role, subscription.updated -> is_pro by status, subscription.deleted -> demote (never demote lifetime), deployed --no-verify-jwt.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -309,13 +309,15 @@
         ],
         "needsHumanEye": []
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED. deno check exits 0. Signature: raw body read as text -> constructEventAsync with SubtleCryptoProvider BEFORE any payload use; the only parsed object is the verified event. Idempotency: claim event.id in stripe_events FIRST (23505 conflict -> ack duplicate), release the claim + 500 on processing failure so Stripe retries. checkout.session.completed: user_id from metadata/client_reference_id, missing metadata -> ack-and-ignore (not ours) to avoid infinite retries; paid lifetime sessions always honored, over-cap logged loudly. subscription.updated/deleted match by stripe_customer_id with .neq(plan,'lifetime') so lifetime is never demoted. All writes via service-role client. Live stripe trigger tests land in B3-4."
+      ]
     },
     {
       "id": "B3-4",
       "title": "Deploy gate + live billing round trip (LB secrets, then I drive)",
       "priority": 10,
-      "status": "pending",
+      "status": "blocked",
       "passes": false,
       "description": "LB runs runbook steps (secrets, price config, migration 0003, deploys, Stripe webhook endpoint). Then machine verification: curl 401 (no JWT), 400 (bad plan), create-checkout with a real JWT returns a checkout.stripe.com URL; drive the TEST checkout page with card 4242...; webhook flips is_pro/plan in profiles (verified via Supabase); stripe trigger customer.subscription.deleted flips it back; duplicate webhook delivery is a no-op.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
@@ -343,7 +345,9 @@
           "LB: runbook secrets/deploy/webhook-endpoint steps; real-extension end-to-end (Upgrade click -> pay -> reopen popup -> cloud unlocked)"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: BLOCKED on LB - runbook steps 1-5 in supabase/SETUP-stripe-billing.md (Stripe secret key, price config, migration 0003 apply, deploys, webhook endpoint). Secrets are LB's by hard rule. Once done, I drive the machine assertions (curls, checkout.stripe.com test payment, Supabase verification, stripe trigger). Loop proceeds to B3-5/6/7 meanwhile."
+      ]
     },
     {
       "id": "B3-5",

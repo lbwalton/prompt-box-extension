@@ -96,8 +96,8 @@
       "id": "BD2",
       "title": "Bulk delete — local/sync mode",
       "priority": 3,
-      "status": "pending",
-      "passes": false,
+      "status": "passed",
+      "passes": true,
       "description": "bulkDeleteSelected(): confirm('Delete N prompts? This cannot be undone.') with true total; resolve ids, one prompts.filter + single savePrompts, filterAndSortPrompts, exit mode. Confirm-cancel keeps selection and mode.",
       "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
       "acceptanceCriteria": [
@@ -125,7 +125,9 @@
         ],
         "needsHumanEye": []
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: PASSED, all assertions observed in harness (local mode). confirm='Delete 3 prompts? This cannot be undone.' exact count; 10->7 DOM+storage with exactly 1 prompts write; confirm-cancel kept mode + 2 checked; Coding tag filter select-all deleted exactly the 2 Coding prompts (others intact, filtered empty state); delete-all -> storage empty + .no-prompts; zero console errors. bulkDeleteSelected implemented COMPLETE (incl. cloud tombstone loop) in this story; BD3 verifies the cloud path. Confirm copy pluralizes 1 prompt/N prompts. Also fixed harness fixture sortBy 'newest' -> 'title-asc' (invalid option value, select fell back to default silently)."
+      ]
     },
     {
       "id": "BD3",

@@ -252,6 +252,7 @@ function setupEventListeners() {
   document.getElementById('selectModeBtn').addEventListener('click', toggleSelectionMode);
   document.getElementById('bulkSelectAllBtn').addEventListener('click', selectAllVisible);
   document.getElementById('bulkCancelBtn').addEventListener('click', exitSelectionMode);
+  document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteSelected);
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && selectionMode) exitSelectionMode();
   });
@@ -1115,6 +1116,31 @@ function updateBulkBar() {
   const deleteBtn = document.getElementById('bulkDeleteBtn');
   deleteBtn.textContent = 'Delete (' + n + ')';
   deleteBtn.disabled = n === 0;
+}
+
+// Delete every selected prompt in one confirmed action. Mirrors deletePrompt:
+// in cloud mode, tombstones for uuid'd prompts are recorded BEFORE the single
+// save so the following push flushes them all in one cycle. Prompts without a
+// uuid were never pushed and delete locally with no tombstone. The count in
+// the confirm is the TRUE selection total, including cards hidden by the
+// current filter.
+async function bulkDeleteSelected() {
+  const count = selectedIds.size;
+  if (count === 0) return;
+  const noun = count === 1 ? 'prompt' : 'prompts';
+  if (!confirm('Delete ' + count + ' ' + noun + '? This cannot be undone.')) return;
+
+  const victims = prompts.filter(function (p) { return selectedIds.has(p.id); });
+  if (storagePref === 'cloud') {
+    // Sequential awaits: recordTombstone read-modify-writes pb_tombstones.
+    for (const v of victims) {
+      if (v.uuid) await PBSync.recordTombstone(v.uuid);
+    }
+  }
+  prompts = prompts.filter(function (p) { return !selectedIds.has(p.id); });
+  savePrompts(prompts, function () {
+    exitSelectionMode(); // clears selectedIds and re-renders the list
+  });
 }
 
 // Search prompts by title or content

@@ -69,7 +69,7 @@
 
   var DEFAULT_TAGS = ['General', 'Writing', 'Coding', 'Research', 'Creative', 'Business', 'Favorite']
     .map(function (n) { return { name: n, isDefault: true, isFavorite: false }; });
-  var FILTER_SETTINGS = { tagFilter: 'all', sortBy: 'newest' };
+  var FILTER_SETTINGS = { tagFilter: '', sortBy: 'title-asc' };
 
   var localSeed = {};
   var syncSeed = { availableTags: DEFAULT_TAGS, filterSettings: FILTER_SETTINGS };

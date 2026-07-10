@@ -1012,6 +1012,15 @@ function toggleSensitivity(promptId) {
   });
 }
 
+// Rewrite a card's Show/Hide button so it matches actual preview visibility.
+// Only hardcoded ICONS constants and the literal words Show/Hide are injected.
+function syncVisibilityButton(promptId, visible) {
+  const button = document.querySelector(`[data-action="toggle-visibility"][data-prompt-id="${promptId}"]`);
+  if (!button) return;
+  // eslint-disable-next-line no-unsanitized/property -- icon is one of the hardcoded ICONS SVG constants and the label is a literal string; mirrors the button markup built in createPromptHTML, no user content involved
+  button.innerHTML = visible ? `${ICONS.eyeOpen}<span>Hide</span>` : `${ICONS.eyeClosed}<span>Show</span>`;
+}
+
 // Peek-to-reveal: click blurred text to temporarily show it
 function handlePeekClick(event) {
   const textEl = event.target.closest('.prompt-text.sensitive');
@@ -1023,12 +1032,7 @@ function handlePeekClick(event) {
 
   // Keep the Show/Hide button in sync with the peek: the text is now visible,
   // so the button must immediately reflect the "Hide" state.
-  const promptId = textEl.getAttribute('data-prompt-id');
-  const button = document.querySelector(`[data-action="toggle-visibility"][data-prompt-id="${promptId}"]`);
-  if (button) {
-    // eslint-disable-next-line no-unsanitized/property -- icon is one of the hardcoded ICONS SVG constants and the label is a literal string; mirrors the button markup built in createPromptHTML, no user content involved
-    button.innerHTML = `${ICONS.eyeOpen}<span>Hide</span>`;
-  }
+  syncVisibilityButton(textEl.getAttribute('data-prompt-id'), true);
 }
 
 // Global privacy shield toggle (session-only)
@@ -1038,10 +1042,13 @@ function togglePrivacyShield() {
   btn.classList.toggle('active', isActive);
   btn.title = isActive ? 'Privacy shield ON — all previews hidden' : 'Privacy shield — hide all previews';
 
-  // Remove any temporary reveals when shield is activated
+  // Remove any temporary reveals when shield is activated, and resync each
+  // affected card's Show/Hide button — the peek is gone, so a stale "Hide"
+  // would otherwise flip the persisted flag on the next click.
   if (isActive) {
     document.querySelectorAll('.prompt-text.revealed').forEach(el => {
       el.classList.remove('revealed');
+      syncVisibilityButton(el.getAttribute('data-prompt-id'), false);
     });
   }
 }

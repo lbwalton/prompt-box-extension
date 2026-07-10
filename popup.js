@@ -984,18 +984,32 @@ function toggleFavorite(promptId) {
   }
 }
 
-// Toggle per-card sensitivity (persistent)
+// Toggle actual preview visibility for a card. Mirrors what the button shows:
+// persistently visible (isSensitive === false) or temporarily peeked (revealed).
 function toggleSensitivity(promptId) {
   const prompt = prompts.find(p => p.id == promptId);
-  if (prompt) {
-    // Toggle: if currently sensitive (or undefined/true), make not sensitive
-    prompt.isSensitive = prompt.isSensitive === false ? true : false;
-    prompt.updatedAt = Date.now();
+  if (!prompt) return;
 
-    savePrompts(prompts, function () {
-      filterAndSortPrompts();
-    });
+  const isPersistentlyHidden = prompt.isSensitive !== false;
+  const textEl = document.querySelector(`.prompt-text[data-prompt-id="${promptId}"]`);
+  const isPeeked = !!(textEl && textEl.classList.contains('revealed'));
+  const isActuallyVisible = !isPersistentlyHidden || isPeeked;
+
+  if (isActuallyVisible && isPersistentlyHidden) {
+    // Visible only via a temporary peek, not the persisted flag — clearing it
+    // needs no data change, no updatedAt stamp, and no cloud push. Re-rendering
+    // drops the peek and restores the blurred "Show" state.
+    filterAndSortPrompts();
+    return;
   }
+
+  // Flip the persisted flag: visible -> hidden, or hidden -> visible.
+  prompt.isSensitive = isActuallyVisible ? true : false;
+  prompt.updatedAt = Date.now();
+
+  savePrompts(prompts, function () {
+    filterAndSortPrompts();
+  });
 }
 
 // Peek-to-reveal: click blurred text to temporarily show it
@@ -1006,6 +1020,15 @@ function handlePeekClick(event) {
   if (document.body.classList.contains('privacy-shield')) return;
 
   textEl.classList.add('revealed');
+
+  // Keep the Show/Hide button in sync with the peek: the text is now visible,
+  // so the button must immediately reflect the "Hide" state.
+  const promptId = textEl.getAttribute('data-prompt-id');
+  const button = document.querySelector(`[data-action="toggle-visibility"][data-prompt-id="${promptId}"]`);
+  if (button) {
+    // eslint-disable-next-line no-unsanitized/property -- icon is one of the hardcoded ICONS SVG constants and the label is a literal string; mirrors the button markup built in createPromptHTML, no user content involved
+    button.innerHTML = `${ICONS.eyeOpen}<span>Hide</span>`;
+  }
 }
 
 // Global privacy shield toggle (session-only)

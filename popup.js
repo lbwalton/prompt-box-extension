@@ -626,24 +626,32 @@ function loadPrompts() {
         finishLoadPrompts(prompts, syncResult, localResult);
         // Sync state is keyed to an account. A session belonging to a
         // DIFFERENT user than the one the cursors/tombstones were built for
-        // (silent expiry + new sign-in skips the sign-out reset) must start
-        // clean, or cursors and queued tombstones cross accounts.
+        // (silent expiry + new sign-in skips the sign-out reset) must never
+        // inherit the previous account's sync relationship: no cursors, no
+        // queued tombstones, and — critically — no silent upload of the
+        // previous account's cached prompts into the new account's cloud.
         const sessionUser = (localResult.pb_session && localResult.pb_session.user_id) || null;
         const syncUser = localResult.pb_sync_user || null;
-        const ensureSyncOwner = (sessionUser && syncUser && sessionUser !== syncUser)
-          ? PBSync.resetSyncState().then(function () {
-            // The local library was keyed to the previous account: its uuids
-            // are that account's cloud primary keys. Strip them so the next
-            // push mints fresh rows for THIS account instead of colliding
-            // with rows it cannot update (RLS would fail the whole upsert).
-            prompts.forEach(function (p) { delete p.uuid; });
-            return new Promise(function (res) {
-              chrome.storage.local.set({ prompts: prompts, pb_sync_user: sessionUser }, res);
+        if (sessionUser && syncUser && sessionUser !== syncUser) {
+          PBSync.resetSyncState().then(function () {
+            // Drop the previous account's cloud rows from this device (their
+            // cloud copies are untouched); keep never-synced local prompts.
+            // Cloud mode was the PREVIOUS account's explicit arming — turn it
+            // off. The new user gets the standard one-click cloud-sync offer
+            // instead; nothing leaves this device without their click.
+            prompts = prompts.filter(function (p) { return !p.uuid; });
+            chrome.storage.local.set({ prompts: prompts, storagePref: 'local' }, function () {
+              storagePref = 'local';
+              updateStoragePrefUI();
+              rerenderPrompts();
+              updateSyncStatus();
             });
-          })
-          : (sessionUser && !syncUser
-            ? new Promise(function (res) { chrome.storage.local.set({ pb_sync_user: sessionUser }, res); })
-            : Promise.resolve());
+          });
+          return;
+        }
+        const ensureSyncOwner = (sessionUser && !syncUser)
+          ? new Promise(function (res) { chrome.storage.local.set({ pb_sync_user: sessionUser }, res); })
+          : Promise.resolve();
         ensureSyncOwner.then(function () {
           const pulledFrom = prompts;
           PBSync.pullRemoteChanges(prompts).then(function (res) {

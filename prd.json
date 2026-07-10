@@ -406,7 +406,7 @@
           "inspect storage + fetch log"
         ],
         "assertions": [
-          "(a) pb_last_push/pb_last_pull/pb_tombstones removed, pb_sync_user rewritten to the session user, exactly one reset",
+          "(a) REVISED by B3-8 review: on mismatch, sync state fully removed (incl. pb_sync_user), uuid'd prompts DROPPED from the device, storagePref flipped to local, zero pulls/pushes — no cross-account data movement; the new user gets the explicit cloud offer instead",
           "(b) badge dimmed AND pb_is_pro false after load; no vivid flash from stale cache after settle",
           "(c) a tombstone POST fires on open with no user edit",
           "zero console errors in all variants"
@@ -414,7 +414,8 @@
         "needsHumanEye": []
       },
       "notes": [
-        "2026-07-10: PASSED, all variants observed in harness. (a) mismatch: exactly 1 resetSyncState (now also removes pb_sync_user), owner rewritten, foreign tombstone wiped, PLUS a fix found during verification: post-reset retry-push was re-uploading prompts still carrying the PREVIOUS account's uuids (PK collision with rows the new account can't update -> RLS fails the whole upsert -> sync stalls); mismatch path now strips uuids before persisting, verified 10 rows re-pushed with all-fresh uuids. (b) expired: refresh 401 -> session cleared -> pb_is_pro/pb_plan cleared + badge dimmed + signed-out block (transient refresh failures keep the badge: guarded on pb_session actually gone from storage). (c) pending: on idle open, 2 homogeneous POSTs - the 1 edited prompt + the 1 queued tombstone, queue flushed, cursor advanced, no user action. Regression: plain cloud open = 0 POSTs, uuids untouched. Session now carries user_id (sync-auth fetchUser); getSession returns userId."
+        "2026-07-10: PASSED, all variants observed in harness. (a) mismatch: exactly 1 resetSyncState (now also removes pb_sync_user), owner rewritten, foreign tombstone wiped, PLUS a fix found during verification: post-reset retry-push was re-uploading prompts still carrying the PREVIOUS account's uuids (PK collision with rows the new account can't update -> RLS fails the whole upsert -> sync stalls); mismatch path now strips uuids before persisting, verified 10 rows re-pushed with all-fresh uuids. (b) expired: refresh 401 -> session cleared -> pb_is_pro/pb_plan cleared + badge dimmed + signed-out block (transient refresh failures keep the badge: guarded on pb_session actually gone from storage). (c) pending: on idle open, 2 homogeneous POSTs - the 1 edited prompt + the 1 queued tombstone, queue flushed, cursor advanced, no user action. Regression: plain cloud open = 0 POSTs, uuids untouched. Session now carries user_id (sync-auth fetchUser); getSession returns userId.",
+        "2026-07-10 (post-review REVISION): the uuid-strip-and-repush design was itself the B3-8 Critical — it silently uploaded the previous account's cached prompts into the NEW account's cloud (shared-computer scenario; violates the no-silent-egress hard rule). New mismatch semantics: reset sync state, DROP uuid'd prompts from the device (previous account's cloud copies untouched), keep never-synced locals, flip storagePref to local, backgroundPull skips unreconciled mismatches; the new user gets the explicit one-click cloud offer. Re-verified: mismatch -> 2 local-only cards remain, pref=local, sync state gone, ZERO posts+pulls; pending/plain-cloud regressions clean."
       ]
     },
     {
@@ -449,7 +450,7 @@
       "id": "B3-8",
       "title": "Whole-branch review + PR (build 2 land)",
       "priority": 14,
-      "status": "pending",
+      "status": "in-progress",
       "passes": false,
       "description": "Whole-branch subagent review of feature/pro-b2-phase3-billing (functions + migration + extension changes), fix findings, re-verify, push, gh pr create with LB runbook + live-test checklist. Merge on LB word. If PR #5 merged first, rebase onto main before the PR.",
       "acceptanceCriteria": [

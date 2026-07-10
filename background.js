@@ -7,9 +7,13 @@ importScripts('sync-config.js', 'sync-auth.js', 'sync-engine.js');
 const SYNC_ALARM = 'pb-cloud-pull';
 
 async function backgroundPull() {
-  const { storagePref } = await new Promise((r) =>
-    chrome.storage.local.get(['storagePref'], r));
+  const { storagePref, pb_session, pb_sync_user } = await new Promise((r) =>
+    chrome.storage.local.get(['storagePref', 'pb_session', 'pb_sync_user'], r));
   if (storagePref !== 'cloud') return;
+  // Account switch not yet reconciled (session belongs to a different user
+  // than the sync state): never pull or merge across accounts here — the
+  // popup's loadPrompts owns that reconciliation.
+  if (pb_session && pb_session.user_id && pb_sync_user && pb_session.user_id !== pb_sync_user) return;
   // The open popup owns pulling (and guards its own writes); a concurrent
   // background merge could clobber an in-flight save. Only pull when closed.
   if (chrome.runtime.getContexts) {

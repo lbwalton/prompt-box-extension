@@ -96,9 +96,16 @@
 
 - **store-user-id-with-sync-state:** sign-in captures the Supabase user id (from `/auth/v1/user`,
   already fetched for email) into `pb_session.user_id`. New local key `pb_sync_user` written when
-  cloud mode engages / on each successful push/pull. `loadPrompts` cloud path: if
-  `pb_session.user_id !== pb_sync_user` → `PBSync.resetSyncState()` + write the new id (prevents
-  cross-account cursor/tombstone contamination beyond the sign-out path).
+  the cloud path engages. `loadPrompts` cloud path: if `pb_session.user_id !== pb_sync_user` (a
+  DIFFERENT account signed in on this device), reconcile without any cross-account data movement:
+  `resetSyncState()` (cursors, tombstones, pb_sync_user), **drop the uuid'd prompts** from the
+  local cache (they are the previous account's cloud rows; their cloud copies are untouched),
+  keep never-synced local prompts, and **flip storagePref to `local`** — cloud mode was the
+  previous account's explicit arming. The new user gets the standard one-click cloud-sync offer;
+  nothing is pulled from or pushed to either account until they click it. `backgroundPull` skips
+  entirely while an unreconciled mismatch exists (the popup owns reconciliation). This closes both
+  the cursor/tombstone contamination AND the silent cross-account upload/merge paths (review
+  finding, 2026-07-10).
 - **Badge vs silent expiry:** when `getSession()` definitively invalidates (refresh token rejected →
   session cleared), the caller (renderAccount) writes `pb_is_pro: false` + `renderProBadge()` so a
   vivid badge cannot survive a dead session.

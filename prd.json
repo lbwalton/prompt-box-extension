@@ -232,8 +232,8 @@
       "id": "B3-1",
       "title": "Migration 0003 (RLS is_pro write predicate + stripe_events) + Stripe runbook",
       "priority": 7,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "supabase/migrations/0003_billing.sql: stripe_events idempotency table (RLS on, no client policies); prompts INSERT/UPDATE policies require profiles.is_pro (SELECT stays owner-only); security-definer lifetime_count(). Plus supabase/SETUP-stripe-billing.md runbook (secrets, config, migration apply, deploys, webhook endpoint, stripe CLI smoke test) per the SETUP-google-oauth.md pattern.",
       "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
       "acceptanceCriteria": [
@@ -253,7 +253,9 @@
           "LB applies 0003 in the dashboard (runbook step); post-apply I verify policies via dashboard/REST"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: machine assertions PASSED (static). 0003 traced against 0001/0002: replaces prompts_all_own with per-command policies (select/delete owner-only; insert/update owner AND is_pro_user()); is_pro_user() granted to authenticated+anon because RLS policy expressions execute with the querying role's privileges (revoking would break the policy); lifetime_count() security definer with PUBLIC execute revoked + explicit service_role grant; stripe_events RLS-on-no-policies (service-role only). Secret scan clean (placeholders only in runbook). Docker down + no local psql -> live apply verification deferred to the runbook step (LB applies, I verify pg_policies via dashboard). deno NOT installed locally - B3-2/3 deno check needs brew install deno or falls back to review + deploy-time typecheck."
+      ]
     },
     {
       "id": "B3-2",

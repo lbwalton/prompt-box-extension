@@ -170,8 +170,8 @@
       "id": "BD4",
       "title": "Filter interplay + polish",
       "priority": 5,
-      "status": "pending",
-      "passes": false,
+      "status": "needs-lb-review",
+      "passes": true,
       "description": "Selection persists across search/filter/sort changes including hidden-selected cards; count always true total; hidden-selected included in delete; dark-mode action bar styling via tokens.",
       "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
       "acceptanceCriteria": [
@@ -197,7 +197,9 @@
           "dark-mode visual polish of checkboxes + action bar in the real popup"
         ]
       },
-      "notes": []
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness. Selected 2 under Writing filter -> switched to Coding filter: count stayed '2 selected' with 0 visible checked (persistence across hidden) -> added 1 -> '3 selected' -> cleared filter: exactly 3 checked with correct titles (re-derived state) -> delete confirmed '3', both formerly-hidden Writing cards deleted (writingRemaining 0). Theme: bulk bar bg rgb(39,39,42) dark / rgb(247,247,248) light / back, via popup's own themeToggleBtn; delete button uses danger token. Escape exits. Zero console errors. No code changes needed - BD1's re-derive design covered everything. LB eyeball: dark-mode checkbox + bar polish in real popup."
+      ]
     },
     {
       "id": "BD5",

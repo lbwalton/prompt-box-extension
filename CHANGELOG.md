@@ -1,5 +1,18 @@
 # Changelog
 
+## [4.0.0] - 2026-07-11
+### Added
+- **Prompt Box Pro: cloud sync across devices.** Sign in with Google, upgrade to Pro, and turn on Cloud sync to keep your prompt library in sync across browsers and computers — offline-first, so the popup is always instant and edits made offline catch up automatically. The free extension is unchanged: local-first, no account needed, and nothing leaves your device unless you sign in and turn sync on.
+- **Upgrade to Pro inside the extension.** Pick Pro Monthly ($2.99/mo), Pro Annual ($19/yr), or the limited Founding Lifetime ($39 once) in Settings > Account. Payment happens on Stripe's secure checkout page in a browser tab — the extension never sees your card details.
+- **Bulk delete.** A new Select button lets you check multiple prompts and delete them in one confirmed action, with a live count so you always know exactly how many are going. Works with search and filters, and syncs deletions to your other devices in cloud mode.
+- **Pro badge.** A subtle seal in the header and Account panel shows your Pro status at a glance.
+### Fixed
+- Right-click "Save to Prompt Box" reliably pre-fills the selected text in the popup again.
+- Google sign-in completes even when the popup closes during the process.
+- The Show/Hide preview button always matches what the card is actually doing.
+### Security
+- Cloud sync data is protected by row-level security: your prompts are readable and writable only by your account. Subscription status can only be changed by our payment server, never from a browser.
+
 ## [3.4.0] - 2026-07-03
 ### Added
 - **Shortcuts now expand on Tab and Enter, not just Space.** Type your shortcut in a sign-in box and press Tab, or in a search bar and press Enter: the full text is filled in before the page acts on it.

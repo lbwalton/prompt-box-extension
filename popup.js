@@ -9,6 +9,13 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
+// Security: escape for DOUBLE-QUOTED attribute values. escapeHTML covers
+// element content only — the serializer it relies on does not escape double
+// quotes, which would break out of an attribute context.
+function escapeHTMLAttr(str) {
+  return escapeHTML(str).replace(/"/g, '&quot;');
+}
+
 // Default tags that come with the extension
 const defaultTags = [
   { name: 'General', isDefault: true },
@@ -24,6 +31,11 @@ let availableTags = [...defaultTags]; // Tags available for selection
 let editingPromptId = null; // Track which prompt we're editing
 let selectedTags = []; // Track selected tags for current form
 let storagePref = 'sync'; // 'sync' | 'local' | 'cloud' — loaded from chrome.storage.local on startup
+
+// Bulk selection state (session-only; never persisted)
+let selectionMode = false;
+const selectedIds = new Set();
+let visibleIds = []; // prompt ids currently rendered by displayFilteredPrompts
 
 // Tag combobox state
 let comboboxOpen = false;
@@ -242,6 +254,15 @@ function setupEventListeners() {
 
   // Pro badge → Settings > Account
   document.getElementById('proBadgeHeader')?.addEventListener('click', openAccountPanel);
+
+  // Bulk selection (multi-select + delete)
+  document.getElementById('selectModeBtn').addEventListener('click', toggleSelectionMode);
+  document.getElementById('bulkSelectAllBtn').addEventListener('click', selectAllVisible);
+  document.getElementById('bulkCancelBtn').addEventListener('click', exitSelectionMode);
+  document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDeleteSelected);
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && selectionMode && !bulkDeleteInFlight) exitSelectionMode();
+  });
 }
 
 // ---- Pro badge (verified-style seal) ----
@@ -342,6 +363,17 @@ function handlePromptButtonClick(event) {
   if (!action || !promptId) return;
 
   const id = parseInt(promptId);
+
+  // Selection checkbox: membership toggle only (no ripple feedback on inputs)
+  if (action === 'toggle-select') {
+    if (button.checked) {
+      selectedIds.add(id);
+    } else {
+      selectedIds.delete(id);
+    }
+    updateBulkBar();
+    return;
+  }
 
   // Add visual feedback
   addButtonFeedback(button, action);
@@ -947,6 +979,10 @@ function deletePrompt(promptId) {
     const gone = prompts.find(p => p.id == promptId);
     const finishDelete = function () {
       prompts = prompts.filter(p => p.id != promptId);
+      // Keep the bulk-selection set honest if this card was selected: a stale
+      // id would inflate the action-bar count and the bulk confirm total.
+      selectedIds.delete(promptId);
+      if (selectionMode) updateBulkBar();
       savePrompts(prompts, function () {
         filterAndSortPrompts();
       });
@@ -1053,6 +1089,97 @@ function togglePrivacyShield() {
   }
 }
 
+// ---- Bulk selection (multi-select + delete) ----
+function toggleSelectionMode() {
+  if (selectionMode) {
+    exitSelectionMode();
+    return;
+  }
+  selectionMode = true;
+  document.getElementById('selectModeBtn').classList.add('active');
+  document.body.classList.add('selection-mode');
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+function exitSelectionMode() {
+  selectionMode = false;
+  selectedIds.clear();
+  document.getElementById('selectModeBtn').classList.remove('active');
+  document.body.classList.remove('selection-mode');
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+// Add every currently visible (filtered) card to the selection.
+function selectAllVisible() {
+  visibleIds.forEach(function (id) { selectedIds.add(id); });
+  updateBulkBar();
+  filterAndSortPrompts();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  if (!bar) return;
+  bar.hidden = !selectionMode;
+  const n = selectedIds.size;
+  document.getElementById('bulkCount').textContent = n + ' selected';
+  const deleteBtn = document.getElementById('bulkDeleteBtn');
+  deleteBtn.textContent = 'Delete (' + n + ')';
+  deleteBtn.disabled = n === 0 || bulkDeleteInFlight;
+}
+
+// Delete every selected prompt in one confirmed action. Mirrors deletePrompt:
+// in cloud mode, tombstones for uuid'd prompts are recorded BEFORE the single
+// save so the following push flushes them all in one cycle. Prompts without a
+// uuid were never pushed and delete locally with no tombstone. The count in
+// the confirm is the TRUE selection total, including cards hidden by the
+// current filter.
+let bulkDeleteInFlight = false;
+async function bulkDeleteSelected() {
+  if (bulkDeleteInFlight) return;
+  const count = selectedIds.size;
+  if (count === 0) return;
+  const noun = count === 1 ? 'prompt' : 'prompts';
+  if (!confirm('Delete ' + count + ' ' + noun + '? This cannot be undone.')) return;
+
+  // Snapshot the victim set NOW: the cloud tombstone loop below yields to the
+  // event loop, and selectedIds can be mutated mid-flight (Escape, Cancel, a
+  // checkbox click). The local filter must delete exactly what was tombstoned.
+  const victims = prompts.filter(function (p) { return selectedIds.has(p.id); });
+  const victimIds = new Set(victims.map(function (v) { return v.id; }));
+
+  bulkDeleteInFlight = true;
+  setBulkBarBusy(true);
+  try {
+    if (storagePref === 'cloud') {
+      // Sequential awaits: recordTombstone read-modify-writes pb_tombstones.
+      for (const v of victims) {
+        if (v.uuid) await PBSync.recordTombstone(v.uuid);
+      }
+    }
+    prompts = prompts.filter(function (p) { return !victimIds.has(p.id); });
+    savePrompts(prompts, function () {
+      bulkDeleteInFlight = false;
+      setBulkBarBusy(false);
+      exitSelectionMode(); // clears selectedIds and re-renders the list
+    });
+  } catch (e) {
+    bulkDeleteInFlight = false;
+    setBulkBarBusy(false);
+  }
+}
+
+// Disable the action bar while a bulk delete is in flight so a second click
+// can't queue duplicate tombstones (a dup uuid pair makes the PostgREST bulk
+// upsert fail and stalls every later push) and Cancel can't half-abort.
+function setBulkBarBusy(busy) {
+  ['bulkSelectAllBtn', 'bulkDeleteBtn', 'bulkCancelBtn'].forEach(function (btnId) {
+    const el = document.getElementById(btnId);
+    if (el) el.disabled = busy;
+  });
+}
+
 // Search prompts by title or content
 function searchPrompts() {
   const searchTerm = document.getElementById('searchBox').value.toLowerCase();
@@ -1125,6 +1252,7 @@ function filterAndSortPrompts() {
 // Display filtered prompts (used by search and sort functions)
 function displayFilteredPrompts(filteredPrompts) {
   const promptList = document.getElementById('promptList');
+  visibleIds = filteredPrompts.map(function (p) { return p.id; });
 
   if (filteredPrompts.length === 0) {
     promptList.innerHTML = `<div class="no-prompts">
@@ -1178,9 +1306,16 @@ function createPromptHTML(prompt) {
   const visibilityIcon = isSensitive ? ICONS.eyeClosed : ICONS.eyeOpen;
   const visibilityLabel = isSensitive ? 'Hidden' : 'Visible';
 
+  // Selection mode: checked state re-derived from selectedIds on every render
+  // so selections survive search/filter/sort re-renders.
+  const selectCheckbox = selectionMode
+    ? `<label class="select-check"><input type="checkbox" data-action="toggle-select" data-prompt-id="${prompt.id}"${selectedIds.has(prompt.id) ? ' checked' : ''} aria-label="Select ${escapeHTMLAttr(prompt.title)}"></label>`
+    : '';
+
   return `
     <div class="prompt-item">
       <div class="prompt-header">
+        ${selectCheckbox}
         <div class="prompt-title">${escapeHTML(prompt.title)}</div>
         <button class="star-btn ${starClass}" data-action="toggle-favorite" data-prompt-id="${prompt.id}">${starIcon}</button>
       </div>

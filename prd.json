@@ -1,0 +1,232 @@
+{
+  "projectName": "Prompt Box",
+  "generatedFrom": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md + docs/superpowers/specs/2026-07-04-promptbox-pro-b2-design.md (Phase 3)",
+  "updated": "2026-07-10",
+  "project": {
+    "testCommand": "npm run lint && npm run security",
+    "buildCommand": null,
+    "devServer": "python3 -m http.server 5641 (from repo root; harness fetches /popup.html + real scripts)",
+    "baseUrl": "http://127.0.0.1:5641/test-harness/",
+    "branchPattern": "one branch per BUILD: feature/bulk-delete (BD*), feature/pro-b2-phase3-billing (B3*); stories commit onto the build branch",
+    "mergePolicy": "push branch + open PR (gh pr create) when all of a build's stories pass machine verification; PR body carries LB's live-test checklist; merge ONLY on LB's word after his real-browser test. Never commit to main.",
+    "rules": [
+      "lint+security 0 errors before EVERY commit",
+      "Stripe TEST MODE ONLY until LB says otherwise",
+      "secrets only in Supabase Edge Function secrets, never repo/chat",
+      "no silent automation changing what data leaves a device",
+      "no 4.0.0 version bump / CHANGELOG until store upload is prepared",
+      "claude-in-chrome cannot open chrome-extension:// pages; popup UI is verified via the test-harness on localhost, real-extension checks are LB's"
+    ]
+  },
+  "stories": [
+    {
+      "id": "BD0",
+      "title": "Popup test harness (dev-only)",
+      "priority": 1,
+      "status": "passed",
+      "passes": true,
+      "description": "Create test-harness/ serving the REAL popup.html + popup.js + sync-*.js on localhost with a chrome-shim.js: in-memory chrome.storage.local/sync, stubbed identity/runtime/alarms/contextMenus, window.confirm auto-accept logging to window.__confirmCalls, fetch shim capturing Supabase request bodies to window.__fetchLog, seedable fixtures (10 prompts, mixed tags/favorites/sensitive, optional uuids + cloud mode). Add test-harness/ to CLAUDE.md never-include list and verify it is not in the pack-and-ship zip command.",
+      "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
+      "acceptanceCriteria": [
+        "real popup renders on localhost with seeded data",
+        "shim covers every chrome.* call popup.js makes at load",
+        "harness never ships"
+      ],
+      "chromeVerification": {
+        "setup": "python3 -m http.server 5641 --directory test-harness (harness copies/rewrites nothing; it loads ../popup.html assets via symlink or fetch-served root — implementer picks the mechanism that keeps popup.html unmodified)",
+        "flow": [
+          "navigate to baseUrl harness page",
+          "wait for cards to render"
+        ],
+        "assertions": [
+          "exactly 10 .prompt-item cards render from seeded fixtures",
+          "search box filters cards live (type a fixture title substring, card count drops)",
+          "window.__confirmCalls exists and confirm() is the shim (call it via javascript_tool, returns true and logs)",
+          "zero console errors after load + one search interaction"
+        ],
+        "needsHumanEye": []
+      },
+      "notes": [
+        "2026-07-10: PASSED, observed in Chrome. Mechanism: loader.js fetches real /popup.html, injects <base href=/> + chrome-shim.js before first script, runs in same-origin srcdoc iframe (natural DOMContentLoaded). Assert via popupFrame.contentWindow. Verified all 3 modes: local (10 cards, search 10->1->10, confirm shim logs+accepts), cloud (10 cards, 8 uuids, shim intercepted GET profiles + GET prompts pull, 'Cloud sync on' status, zero console errors on tracked load), sync (10 cards, clean). Cloud seed: 8 uuid'd + 2 local-only (BD3 uses this). pb_last_push seeded AFTER fixture updatedAt so no spurious first push. __fetchLog entries carry tombstonesAtSend snapshot for BD3 ordering assertion. Serve REPO ROOT: python3 -m http.server 5641."
+      ]
+    },
+    {
+      "id": "BD1",
+      "title": "Selection mode UI (Select toggle, checkboxes, action bar)",
+      "priority": 2,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "Add Select button to toolbar; selectionMode + selectedIds Set (module-level, session-only); checkboxes on cards rendered from selectedIds in createPromptHTML; fixed bottom action bar with live count, Select all (visible set), Delete (N) disabled at 0, Cancel. Checkbox clicks via delegated handlePromptButtonClick data-action. Cancel/Escape exits and clears. CSS tokens only, dark-mode via existing overrides.",
+      "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
+      "acceptanceCriteria": [
+        "Select toggles mode",
+        "checkboxes on every visible card",
+        "live count",
+        "Cancel exits + clears",
+        "normal mode unchanged"
+      ],
+      "chromeVerification": {
+        "setup": "harness with 10 seeded prompts",
+        "flow": [
+          "click Select",
+          "check 3 cards",
+          "click Select all",
+          "click Cancel",
+          "re-enter, check 2, press Escape"
+        ],
+        "assertions": [
+          "clicking Select renders a checkbox in every visible card and shows the action bar",
+          "checking 3 cards makes the count read '3 selected' and Delete button reads 'Delete (3)' and is enabled",
+          "Delete button is disabled when 0 selected",
+          "Select all checks all visible cards (count equals visible card count)",
+          "Cancel hides checkboxes + action bar and clears selectedIds (re-entering shows 0 selected)",
+          "Escape exits selection mode identically to Cancel",
+          "in normal mode: copy/edit/star buttons still dispatch (click star toggles isFavorite in shim storage)",
+          "zero console errors across the flow"
+        ],
+        "needsHumanEye": [
+          "action bar visual fit in the real popup (spacing, does not cover last card)"
+        ]
+      },
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness (local mode): 10/10 checkboxes, live count 0/3/10, Delete disabled at 0 + 'Delete (3)' enabled, Select all -> 10 checked, Cancel + Escape both exit and clear, normal-mode regression clean (star flips shim storage, edit opens form, single delete via shimmed confirm 10->9), zero console errors, dark-mode screenshot evidence. bulkDeleteBtn intentionally has NO click listener yet - bulkDeleteSelected + wiring land in BD2. LB eyeball: bar fit in real popup."
+      ]
+    },
+    {
+      "id": "BD2",
+      "title": "Bulk delete — local/sync mode",
+      "priority": 3,
+      "status": "passed",
+      "passes": true,
+      "description": "bulkDeleteSelected(): confirm('Delete N prompts? This cannot be undone.') with true total; resolve ids, one prompts.filter + single savePrompts, filterAndSortPrompts, exit mode. Confirm-cancel keeps selection and mode.",
+      "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
+      "acceptanceCriteria": [
+        "exact count in confirm",
+        "one save",
+        "select-all under filter deletes only filtered set",
+        "delete-all shows empty state",
+        "confirm-cancel preserves selection"
+      ],
+      "chromeVerification": {
+        "setup": "harness, local mode, 10 seeded prompts",
+        "flow": [
+          "select 3, delete, accept confirm",
+          "filter to a tag, select all, delete",
+          "select remaining, delete with shim set to reject once, then accept"
+        ],
+        "assertions": [
+          "window.__confirmCalls last message contains the exact selected count",
+          "after delete: DOM card count and shim storage prompts length both drop by exactly N",
+          "shim storage write count for the delete is exactly 1 savePrompts-driven write",
+          "tag-filtered select-all deletes only that tag's cards; other prompts intact in storage",
+          "deleting all remaining prompts renders the .no-prompts empty state",
+          "when confirm returns false: nothing deleted, selection mode + checked state intact",
+          "zero console errors"
+        ],
+        "needsHumanEye": []
+      },
+      "notes": [
+        "2026-07-10: PASSED, all assertions observed in harness (local mode). confirm='Delete 3 prompts? This cannot be undone.' exact count; 10->7 DOM+storage with exactly 1 prompts write; confirm-cancel kept mode + 2 checked; Coding tag filter select-all deleted exactly the 2 Coding prompts (others intact, filtered empty state); delete-all -> storage empty + .no-prompts; zero console errors. bulkDeleteSelected implemented COMPLETE (incl. cloud tombstone loop) in this story; BD3 verifies the cloud path. Confirm copy pluralizes 1 prompt/N prompts. Also fixed harness fixture sortBy 'newest' -> 'title-asc' (invalid option value, select fell back to default silently)."
+      ]
+    },
+    {
+      "id": "BD3",
+      "title": "Bulk delete — cloud mode tombstones",
+      "priority": 4,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "In cloud mode, before the single save: await PBSync.recordTombstone(uuid) sequentially for every selected prompt WITH a uuid; no-uuid prompts delete with no tombstone. The save's push then flushes prompts + all tombstones (existing two-homogeneous-POST design). Never bypass deletePrompt/recordTombstone semantics.",
+      "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
+      "acceptanceCriteria": [
+        "one tombstone per uuid'd victim in pb_tombstones before save",
+        "push flushes all",
+        "no-uuid victims produce no tombstone",
+        "single push cycle"
+      ],
+      "chromeVerification": {
+        "setup": "harness seeded in cloud mode: storagePref=cloud, pb_session + pb_is_pro in shim storage, 6 prompts with uuids + 2 without, fetch shim capturing POST bodies",
+        "flow": [
+          "select 4 uuid'd + 1 no-uuid prompt",
+          "delete, accept confirm",
+          "inspect window.__fetchLog and shim storage"
+        ],
+        "assertions": [
+          "pb_tombstones contained 4 uuids (with deleted_at) before the push fired (fetch shim can assert tombstones present in storage at POST time)",
+          "the tombstone POST body contains exactly the 4 uuids with deleted_at set; the no-uuid victim appears in no POST",
+          "pb_tombstones is empty after the successful shimmed push (flush behavior)",
+          "storage prompts length dropped by 5 and DOM matches",
+          "exactly one push cycle fired (no per-victim pushes)",
+          "zero console errors"
+        ],
+        "needsHumanEye": [
+          "real two-device propagation (LB: bulk delete on device A disappears on device B) — covered in PR live-test checklist"
+        ]
+      },
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness cloud mode (8 uuid'd + 2 no-uuid seeded; selected 4 uuid'd + 1 no-uuid). Observed: exactly ONE POST /rest/v1/prompts for the whole delete (changedRows=0 since fixtures predate pb_last_push cursor); body = exactly the 4 expected uuids, homogeneous {id, deleted_at, updated_at} rows with updated_at===deleted_at; tombstonesAtSend=4 (queue populated BEFORE push fired); pb_tombstones empty after flush; storage+DOM 10->5; no-uuid victim (Client Billing Notes) deleted locally, absent from every POST; other no-uuid prompt (Daily Standup) survived; zero console errors. LESSON: first probe raced the async chain at 900ms during an extension reconnect and looked like a hang - poll for completion instead of fixed sleeps. Remaining human item: real two-device propagation (PR checklist)."
+      ]
+    },
+    {
+      "id": "BD4",
+      "title": "Filter interplay + polish",
+      "priority": 5,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "Selection persists across search/filter/sort changes including hidden-selected cards; count always true total; hidden-selected included in delete; dark-mode action bar styling via tokens.",
+      "spec": "docs/superpowers/specs/2026-07-10-bulk-delete-design.md",
+      "acceptanceCriteria": [
+        "selection survives filter changes",
+        "true total count",
+        "hidden-selected deleted",
+        "dark mode styled"
+      ],
+      "chromeVerification": {
+        "setup": "harness, 10 seeded prompts across 2+ tags",
+        "flow": [
+          "select 2 from tag A, filter to tag B, select 1 more, clear filter, delete all 3",
+          "toggle prefers-color-scheme dark via emulation or harness override"
+        ],
+        "assertions": [
+          "after filtering to tag B the count still reads '2 selected' then '3 selected' after adding one",
+          "confirm message says 3; all 3 deleted including the two hidden at selection time",
+          "re-rendered checkboxes under changed filters reflect selectedIds (checked state re-derived)",
+          "action bar colors in dark mode come from the token palette (computed background != light-mode value)",
+          "zero console errors"
+        ],
+        "needsHumanEye": [
+          "dark-mode visual polish of checkboxes + action bar in the real popup"
+        ]
+      },
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness. Selected 2 under Writing filter -> switched to Coding filter: count stayed '2 selected' with 0 visible checked (persistence across hidden) -> added 1 -> '3 selected' -> cleared filter: exactly 3 checked with correct titles (re-derived state) -> delete confirmed '3', both formerly-hidden Writing cards deleted (writingRemaining 0). Theme: bulk bar bg rgb(39,39,42) dark / rgb(247,247,248) light / back, via popup's own themeToggleBtn; delete button uses danger token. Escape exits. Zero console errors. No code changes needed - BD1's re-derive design covered everything. LB eyeball: dark-mode checkbox + bar polish in real popup."
+      ]
+    },
+    {
+      "id": "BD5",
+      "title": "Whole-branch review + PR (build 1 land)",
+      "priority": 6,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "Whole-branch subagent review of feature/bulk-delete (Phase 2 pattern), fix findings, re-verify affected stories, push branch, gh pr create with LB live-test checklist (real popup selection UX, real cloud bulk delete to device B, dark mode look). Merge only on LB word.",
+      "acceptanceCriteria": [
+        "review clean or findings fixed",
+        "lint+security 0",
+        "branch pushed",
+        "PR open with checklist"
+      ],
+      "chromeVerification": {
+        "setup": "n/a (review story) — re-run any harness assertions invalidated by review fixes",
+        "flow": [],
+        "assertions": [
+          "gh pr view returns the open PR URL"
+        ],
+        "needsHumanEye": [
+          "LB live-test checklist in PR body"
+        ]
+      },
+      "notes": [
+        "2026-07-10: whole-branch review (feature-dev reviewer) found 1 Critical + 3 Important, all real; fixed in eb5606f (victimIds snapshot; bulkDeleteInFlight re-entrancy guard + bar disable; escapeHTMLAttr for aria-label; deletePrompt evicts from selectedIds). All re-verified live in harness. Re-review verdict: READY, zero new issues; one sub-threshold cosmetic nit noted (transient count tick during concurrent per-card delete + in-flight bulk, cosmetic only). Reviewer follow-up ticket suggestion (pre-existing, out of scope): tag-name value=/data-original-name=/data-tag= attribute sinks also rely on quote-less escapeHTML - candidate for escapeHTMLAttr sweep in a later cycle. PR opened; merge gated on LB live test."
+      ]
+    }
+  ]
+}

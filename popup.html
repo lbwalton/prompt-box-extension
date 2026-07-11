@@ -654,6 +654,114 @@
     }
 
     /* ========================================
+       Bulk Selection
+       ======================================== */
+    .select-mode-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .select-mode-btn:hover {
+      background: var(--color-surface-hover);
+    }
+
+    .select-mode-btn.active {
+      color: var(--color-accent);
+      border-color: var(--color-accent);
+      background: var(--color-accent-light);
+    }
+
+    .select-check {
+      display: flex;
+      align-items: center;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .select-check input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--color-accent);
+      cursor: pointer;
+    }
+
+    .prompt-header .prompt-title {
+      flex: 1;
+      margin-right: 8px;
+    }
+
+    .bulk-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .bulk-bar[hidden] {
+      display: none;
+    }
+
+    .bulk-count {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-right: auto;
+    }
+
+    .bulk-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background: var(--color-bg);
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .bulk-btn:hover:not(:disabled) {
+      background: var(--color-surface-hover);
+    }
+
+    .bulk-btn.bulk-delete {
+      background: var(--color-danger);
+      border-color: var(--color-danger);
+      color: #ffffff;
+    }
+
+    .bulk-btn.bulk-delete:hover:not(:disabled) {
+      background: var(--color-danger-hover);
+    }
+
+    .bulk-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Keep the fixed bar from covering the last card while selecting */
+    body.selection-mode .prompt-list {
+      padding-bottom: 56px;
+    }
+
+    /* ========================================
        Prompt List
        ======================================== */
     .prompt-list {
@@ -1867,6 +1975,7 @@
         <option value="favorites">Favorites First</option>
       </select>
     </div>
+    <button class="select-mode-btn" id="selectModeBtn" type="button" title="Select multiple prompts">Select</button>
   </div>
 
   <div class="prompt-list" id="promptList">
@@ -1881,6 +1990,13 @@
       <div class="empty-state-title">No prompts yet</div>
       <div class="empty-state-hint">Click <strong>+ Add</strong> to save your first prompt</div>
     </div>
+  </div>
+
+  <div class="bulk-bar" id="bulkBar" hidden>
+    <span class="bulk-count" id="bulkCount">0 selected</span>
+    <button class="bulk-btn" id="bulkSelectAllBtn" type="button">Select all</button>
+    <button class="bulk-btn bulk-delete" id="bulkDeleteBtn" type="button" disabled>Delete (0)</button>
+    <button class="bulk-btn" id="bulkCancelBtn" type="button">Cancel</button>
   </div>
 
   <div class="footer">

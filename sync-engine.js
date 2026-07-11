@@ -253,10 +253,13 @@
   }
   // Forget all sync progress. Called on sign-out so a different account (or a
   // fresh sign-in) starts with a full pull/push instead of inheriting cursors
-  // and queued tombstones that belong to the previous account.
+  // and queued tombstones that belong to the previous account. pb_sync_user
+  // (the account the cursors belong to) goes with them; the silent-expiry
+  // path does NOT reset, which is exactly why loadPrompts compares
+  // pb_sync_user against the session and resets on mismatch.
   function resetSyncState() {
     return new Promise((res) =>
-      chrome.storage.local.remove(['pb_last_push', 'pb_last_pull', 'pb_tombstones'], res));
+      chrome.storage.local.remove(['pb_last_push', 'pb_last_pull', 'pb_tombstones', 'pb_sync_user'], res));
   }
 
   // ---- sync status ----

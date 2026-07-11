@@ -225,7 +225,254 @@
         ]
       },
       "notes": [
-        "2026-07-10: whole-branch review (feature-dev reviewer) found 1 Critical + 3 Important, all real; fixed in eb5606f (victimIds snapshot; bulkDeleteInFlight re-entrancy guard + bar disable; escapeHTMLAttr for aria-label; deletePrompt evicts from selectedIds). All re-verified live in harness. Re-review verdict: READY, zero new issues; one sub-threshold cosmetic nit noted (transient count tick during concurrent per-card delete + in-flight bulk, cosmetic only). Reviewer follow-up ticket suggestion (pre-existing, out of scope): tag-name value=/data-original-name=/data-tag= attribute sinks also rely on quote-less escapeHTML - candidate for escapeHTMLAttr sweep in a later cycle. PR opened; merge gated on LB live test."
+        "2026-07-10: whole-branch review (feature-dev reviewer) found 1 Critical + 3 Important, all real; fixed in eb5606f (victimIds snapshot; bulkDeleteInFlight re-entrancy guard + bar disable; escapeHTMLAttr for aria-label; deletePrompt evicts from selectedIds). All re-verified live in harness. Re-review verdict: READY, zero new issues; one sub-threshold cosmetic nit noted (transient count tick during concurrent per-card delete + in-flight bulk, cosmetic only). Reviewer follow-up ticket suggestion (pre-existing, out of scope): tag-name value=/data-original-name=/data-tag= attribute sinks also rely on quote-less escapeHTML - candidate for escapeHTMLAttr sweep in a later cycle. PR #5 open (https://github.com/lbwalton/prompt-box-extension/pull/5); merge gated on LB live test. NOTE: BD stories live on feature/bulk-delete; B3 stories on feature/pro-b2-phase3-billing (harness cherry-picked, prd.json carried forward - trivial conflict on whichever PR merges second, keep the union)."
+      ]
+    },
+    {
+      "id": "B3-1",
+      "title": "Migration 0003 (RLS is_pro write predicate + stripe_events) + Stripe runbook",
+      "priority": 7,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "supabase/migrations/0003_billing.sql: stripe_events idempotency table (RLS on, no client policies); prompts INSERT/UPDATE policies require profiles.is_pro (SELECT stays owner-only); security-definer lifetime_count(). Plus supabase/SETUP-stripe-billing.md runbook (secrets, config, migration apply, deploys, webhook endpoint, stripe CLI smoke test) per the SETUP-google-oauth.md pattern.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "SQL applies cleanly on the existing 0001+0002 schema",
+        "expired-pro write rejected, owner read allowed",
+        "runbook complete with no secrets in it"
+      ],
+      "chromeVerification": {
+        "setup": "static: SQL reviewed against 0001/0002 (no live DB until LB applies per runbook)",
+        "flow": [],
+        "assertions": [
+          "0003 references only objects that exist in 0001/0002 (trace by read)",
+          "no secret values anywhere in the new files",
+          "lifetime_count() is security definer and NOT granted to anon/authenticated"
+        ],
+        "needsHumanEye": [
+          "LB applies 0003 in the dashboard (runbook step); post-apply I verify policies via dashboard/REST"
+        ]
+      },
+      "notes": [
+        "2026-07-10: machine assertions PASSED (static). 0003 traced against 0001/0002: replaces prompts_all_own with per-command policies (select/delete owner-only; insert/update owner AND is_pro_user()); is_pro_user() granted to authenticated+anon because RLS policy expressions execute with the querying role's privileges (revoking would break the policy); lifetime_count() security definer with PUBLIC execute revoked + explicit service_role grant; stripe_events RLS-on-no-policies (service-role only). Secret scan clean (placeholders only in runbook). Docker down + no local psql -> live apply verification deferred to the runbook step (LB applies, I verify pg_policies via dashboard). deno NOT installed locally - B3-2/3 deno check needs brew install deno or falls back to review + deploy-time typecheck."
+      ]
+    },
+    {
+      "id": "B3-2",
+      "title": "Edge Function create-checkout",
+      "priority": 8,
+      "status": "passed",
+      "passes": true,
+      "description": "supabase/functions/create-checkout/index.ts: JWT verify (401), plan allowlist from env price IDs (400), lifetime 100-cap via lifetime_count() (409 lifetime_sold_out), create/reuse stripe_customer_id (service role), Checkout Session (subscription vs payment mode, client_reference_id + metadata.user_id + metadata.plan), returns {url}. CORS for extension origin + OPTIONS.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "deno check clean",
+        "all error paths covered (401/400/409/500)",
+        "no secrets in code",
+        "price IDs from env only"
+      ],
+      "chromeVerification": {
+        "setup": "deno check + code review pre-deploy; live curl of 401/400 paths lands in B3-4 after LB deploys",
+        "flow": [],
+        "assertions": [
+          "deno check supabase/functions/create-checkout/index.ts exits 0",
+          "grep: no sk_test/sk_live/whsec anywhere in supabase/functions/"
+        ],
+        "needsHumanEye": [],
+        "notes-inline": "live 401/400/409 curls + checkout URL creation verified in B3-4 once deployed"
+      },
+      "notes": [
+        "2026-07-10: PASSED. deno 2.9.2 installed via brew; deno check exits 0 (npm:stripe@17.7.0 + jsr:@supabase/supabase-js@2.110.2). Added supabase/functions/deno.json (nodeModulesDir auto) + .gitignore for its node_modules - required because the repo's package.json puts deno in byonm mode. Secret scan clean. Flow: OPTIONS/405 guard -> env presence 500 -> JWT via anon getUser 401 -> plan allowlist hasOwnProperty 400 -> lifetime_count() rpc 409 at 100 -> reuse/create stripe customer (persist id via service role) -> Checkout Session (payment vs subscription mode, user_id in client_reference_id + metadata + subscription_data.metadata) -> {url}. Stripe errors caught -> plain 500, no detail leak. Live curls land in B3-4."
+      ]
+    },
+    {
+      "id": "B3-3",
+      "title": "Edge Function stripe-webhook (signatures, idempotency, only-writer, cap)",
+      "priority": 9,
+      "status": "passed",
+      "passes": true,
+      "description": "supabase/functions/stripe-webhook/index.ts: constructEventAsync signature verify (400 on bad sig), stripe_events insert-or-skip idempotency, checkout.session.completed -> is_pro/plan/stripe_customer_id via service role, subscription.updated -> is_pro by status, subscription.deleted -> demote (never demote lifetime), deployed --no-verify-jwt.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "deno check clean",
+        "unsigned/bad-sig request rejected before payload use",
+        "duplicate event id is a no-op",
+        "lifetime never demoted"
+      ],
+      "chromeVerification": {
+        "setup": "deno check + code review pre-deploy; live stripe trigger tests in B3-4",
+        "flow": [],
+        "assertions": [
+          "deno check supabase/functions/stripe-webhook/index.ts exits 0",
+          "signature verification precedes any JSON.parse/use of the body in the code path",
+          "every entitlement write goes through the service-role client"
+        ],
+        "needsHumanEye": []
+      },
+      "notes": [
+        "2026-07-10: PASSED. deno check exits 0. Signature: raw body read as text -> constructEventAsync with SubtleCryptoProvider BEFORE any payload use; the only parsed object is the verified event. Idempotency: claim event.id in stripe_events FIRST (23505 conflict -> ack duplicate), release the claim + 500 on processing failure so Stripe retries. checkout.session.completed: user_id from metadata/client_reference_id, missing metadata -> ack-and-ignore (not ours) to avoid infinite retries; paid lifetime sessions always honored, over-cap logged loudly. subscription.updated/deleted match by stripe_customer_id with .neq(plan,'lifetime') so lifetime is never demoted. All writes via service-role client. Live stripe trigger tests land in B3-4."
+      ]
+    },
+    {
+      "id": "B3-4",
+      "title": "Deploy gate + live billing round trip (LB secrets, then I drive)",
+      "priority": 10,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "LB runs runbook steps (secrets, price config, migration 0003, deploys, Stripe webhook endpoint). Then machine verification: curl 401 (no JWT), 400 (bad plan), create-checkout with a real JWT returns a checkout.stripe.com URL; drive the TEST checkout page with card 4242...; webhook flips is_pro/plan in profiles (verified via Supabase); stripe trigger customer.subscription.deleted flips it back; duplicate webhook delivery is a no-op.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "full test-mode checkout flips is_pro via webhook",
+        "cancel flips back",
+        "idempotent redelivery",
+        "error paths correct"
+      ],
+      "chromeVerification": {
+        "setup": "BLOCKED until LB completes runbook steps 1-5 (secrets are his). Then: real Chrome on checkout.stripe.com TEST + Supabase dashboard/REST.",
+        "flow": [
+          "curl function error paths",
+          "open returned checkout URL in a tab, pay with 4242 4242 4242 4242",
+          "verify profiles row via dashboard",
+          "stripe trigger subscription events"
+        ],
+        "assertions": [
+          "create-checkout: 401 without JWT, 400 unknown plan, 200 {url} with JWT",
+          "after test payment: profiles.is_pro=true with correct plan (observed via Supabase)",
+          "after subscription.deleted trigger: is_pro=false, plan null (lifetime untouched)",
+          "stripe_events holds each event id exactly once after a forced redelivery"
+        ],
+        "needsHumanEye": [
+          "LB: runbook secrets/deploy/webhook-endpoint steps; real-extension end-to-end (Upgrade click -> pay -> reopen popup -> cloud unlocked)"
+        ]
+      },
+      "notes": [
+        "2026-07-10: BLOCKED on LB - runbook steps 1-5 in supabase/SETUP-stripe-billing.md (Stripe secret key, price config, migration 0003 apply, deploys, webhook endpoint). Secrets are LB's by hard rule. Once done, I drive the machine assertions (curls, checkout.stripe.com test payment, Supabase verification, stripe trigger). Loop proceeds to B3-5/6/7 meanwhile.",
+        "2026-07-11: IN PROGRESS, tag-team live. LB did steps 1-3 (secrets list shows STRIPE_SECRET_KEY + 3 price IDs; migration 0003 applied - runbook check query had a bug, polname -> policyname, fixed in 9cba75f). Claude did step 4: both functions deployed via CLI (--use-api, docker down) and ACTIVE v1. Live probes: create-checkout no-JWT 401 (platform gate before function code); stripe-webhook bad-sig 500 server_misconfigured = correct env guard, STRIPE_WEBHOOK_SECRET not yet set. Remaining: LB step 5 (Stripe TEST webhook endpoint + set STRIPE_WEBHOOK_SECRET in his own terminal, NOT via chat); then flip LB profile is_pro=false via dashboard SQL (postgres role bypasses the guard trigger, same as the Phase 2 manual flip), reload extension on billing branch, real Upgrade -> 4242 checkout -> webhook flips is_pro -> popup unlocks; stripe trigger cancel + redelivery idempotency.",
+        "2026-07-11 (later): ALL MACHINE ASSERTIONS PASSED LIVE. Post-secret bad-sig now 400 bad_signature. 0003 policies verified via pg_policies (4 rows). Flipped LB free via dashboard SQL; LB ran the REAL extension Upgrade (billing branch) -> paid 4242 on checkout.stripe.com -> WEBHOOK promoted the profile (is_pro=true, plan=monthly, stripe_customer_id saved; 2 distinct events). Idempotency: dashboard resend of checkout.session.completed -> 200 ack, stripe_events stayed 2 distinct, profile unchanged. Cancellation: canceled the test sub (immediately, no refund) via dashboard -> customer.subscription.deleted -> is_pro=false, plan=null, customer id preserved, events=3 distinct. Note: stripe CLI on this machine is authed to a DIFFERENT account (newsbooklm) - dashboard used instead; fine. ALSO fixed live: plan picker layout crushed by global input width:100% rule (9638ea7, LB-flagged; accent checked-state added). Remaining LB eyeball: re-upgrade to stay Pro (Founding Lifetime also exercises payment-mode branch), reopen popup -> badge vivid + plan line + Cloud unlockable; two-account switch check; then merge word."
+      ]
+    },
+    {
+      "id": "B3-5",
+      "title": "Extension Upgrade UI + entitlement re-read",
+      "priority": 11,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "Plan picker in #accountSignedIn (3 token-styled rows, shown when signed in AND not pro; #accountPlan shows active plan when pro), Upgrade button -> POST functionsBase/create-checkout with JWT -> chrome.tabs.create({url}) + 'finish in the new tab, then reopen' note; 409 hides lifetime with sold-out note; 401 -> re-sign-in prompt; entitlementEpoch guards all awaits; sync-config.js gains functionsBase. Harness: fetch shim route for create-checkout + tabs.create shim.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "picker renders only when signed-in and not pro",
+        "upgrade POSTs the chosen plan with JWT",
+        "checkout URL opened in new tab",
+        "409 hides lifetime",
+        "pro account shows plan instead of picker"
+      ],
+      "chromeVerification": {
+        "setup": "harness cloud mode variants: pb_is_pro false + signed in (picker), pb_is_pro true (no picker), fetch route 409 for lifetime; add chrome.tabs.create shim logging to __tabsCreated",
+        "flow": [
+          "open Settings > Account in harness",
+          "pick each plan and click Upgrade",
+          "force 409 and re-try lifetime"
+        ],
+        "assertions": [
+          "picker hidden when pb_is_pro true; visible signed-in+free",
+          "POST body {plan} matches selection and Authorization header carries the session token (fetch shim log)",
+          "__tabsCreated receives the checkout URL returned by the shim route",
+          "409 route hides the lifetime row and shows sold-out copy",
+          "zero console errors"
+        ],
+        "needsHumanEye": [
+          "real checkout round trip (folded into B3-4 LB item)"
+        ]
+      },
+      "notes": [
+        "2026-07-10: all machine assertions PASSED in harness. Free signed-in (?mode=cloud&pro=0): picker visible with 3 plans, POST body {plan:'annual'}, Authorization header === 'Bearer '+session token (verified via in-page comparison; the browser tool redacts token-shaped values so assert with verdict strings), checkout URL opened via chrome.tabs.create shim, status copy set, button re-enabled. 409 route: lifetime row hidden, selection falls back to monthly, sold-out copy, no tab. Pro variant: picker hidden, 'Plan: Founding Lifetime' line, vivid badge. Zero console errors both variants. NEW pb_plan storage key cached alongside pb_is_pro (cleared on sign-out) -> B3-7 must document it. HARNESS FIX: loader now cache-busts popup.html + all scripts (?v=timestamp) - a stale cached sync-config.js made fetch hit a relative undefined/ URL and dodge the interceptor; classic 'verifying yesterday's code' trap, now impossible."
+      ]
+    },
+    {
+      "id": "B3-6",
+      "title": "Sync-state hygiene: pb_sync_user reset + expiry badge + retry-pending-push",
+      "priority": 12,
+      "status": "passed",
+      "passes": true,
+      "description": "Session stores user_id (captured with email at sign-in); pb_sync_user written when cloud sync engages; loadPrompts cloud path resets sync state on user mismatch; definitive session invalidation clears pb_is_pro (badge cannot survive expiry); popup open in cloud mode retries pending pushes (queued tombstones or updatedAt > pb_last_push) after the initial pull settles.",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "user mismatch wipes cursors+tombstones exactly once",
+        "expired session dims badge",
+        "pending push fires on open without an edit"
+      ],
+      "chromeVerification": {
+        "setup": "harness cloud variants: (a) pb_sync_user set to a DIFFERENT user id than pb_session, stale cursors + a foreign tombstone seeded; (b) pb_session expires_at in the past + refresh route 401; (c) pb_tombstones seeded non-empty with fresh session",
+        "flow": [
+          "load each variant",
+          "inspect storage + fetch log"
+        ],
+        "assertions": [
+          "(a) REVISED by B3-8 review: on mismatch, sync state fully removed (incl. pb_sync_user), uuid'd prompts DROPPED from the device, storagePref flipped to local, zero pulls/pushes — no cross-account data movement; the new user gets the explicit cloud offer instead",
+          "(b) badge dimmed AND pb_is_pro false after load; no vivid flash from stale cache after settle",
+          "(c) a tombstone POST fires on open with no user edit",
+          "zero console errors in all variants"
+        ],
+        "needsHumanEye": []
+      },
+      "notes": [
+        "2026-07-10: PASSED, all variants observed in harness. (a) mismatch: exactly 1 resetSyncState (now also removes pb_sync_user), owner rewritten, foreign tombstone wiped, PLUS a fix found during verification: post-reset retry-push was re-uploading prompts still carrying the PREVIOUS account's uuids (PK collision with rows the new account can't update -> RLS fails the whole upsert -> sync stalls); mismatch path now strips uuids before persisting, verified 10 rows re-pushed with all-fresh uuids. (b) expired: refresh 401 -> session cleared -> pb_is_pro/pb_plan cleared + badge dimmed + signed-out block (transient refresh failures keep the badge: guarded on pb_session actually gone from storage). (c) pending: on idle open, 2 homogeneous POSTs - the 1 edited prompt + the 1 queued tombstone, queue flushed, cursor advanced, no user action. Regression: plain cloud open = 0 POSTs, uuids untouched. Session now carries user_id (sync-auth fetchUser); getSession returns userId.",
+        "2026-07-10 (post-review REVISION): the uuid-strip-and-repush design was itself the B3-8 Critical — it silently uploaded the previous account's cached prompts into the NEW account's cloud (shared-computer scenario; violates the no-silent-egress hard rule). New mismatch semantics: reset sync state, DROP uuid'd prompts from the device (previous account's cloud copies untouched), keep never-synced locals, flip storagePref to local, backgroundPull skips unreconciled mismatches; the new user gets the explicit one-click cloud offer. Re-verified: mismatch -> 2 local-only cards remain, pref=local, sync state gone, ZERO posts+pulls; pending/plain-cloud regressions clean."
+      ]
+    },
+    {
+      "id": "B3-7",
+      "title": "Docs debt: privacy practices + CLAUDE.md pb_* keys (+ store listing check)",
+      "priority": 13,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "prompt-box-privacy-practices.md: pb_* keys disclosure, sync-or-local storage line, changelog table row. Project CLAUDE.md Data Schema: same keys incl. pb_sync_user. Verify store listing needs no permission-change edits (checkout is a plain tab). NO version bump / CHANGELOG (store-upload prep only).",
+      "spec": "docs/superpowers/specs/2026-07-10-promptbox-pro-phase3-billing-design.md",
+      "acceptanceCriteria": [
+        "every pb_* key documented in both files",
+        "no version bump",
+        "store listing verified"
+      ],
+      "chromeVerification": {
+        "setup": "file assertions (grep), no browser needed",
+        "flow": [],
+        "assertions": [
+          "grep finds pb_session, pb_is_pro, pb_sync_offer_dismissed, pb_last_push, pb_last_pull, pb_tombstones, pb_sync_user in BOTH prompt-box-privacy-practices.md and CLAUDE.md",
+          "manifest.json version still 3.4.0"
+        ],
+        "needsHumanEye": [
+          "LB: privacy page on promptboxapp.com needs the same disclosure before 4.0.0 store upload (site repo, separate)"
+        ]
+      },
+      "notes": [
+        "2026-07-10: PASSED. All 8 pb_* keys (incl. new pb_plan + pb_sync_user) grep-verified in BOTH prompt-box-privacy-practices.md and CLAUDE.md; storage-pref line now says sync/local/cloud; External Connections gains Supabase-Pro and Stripe Checkout sections (payment only on Stripe's hosted page, extension never sees card data); 4.0.0 changelog row extended with billing + pb_* disclosure. CLAUDE.md schema also documents uuid preservation rule and the pb_sync_user mismatch semantics. manifest still 3.4.0, no version bump. Store listing checked: Pro/cloud paragraph present, billing adds no permissions - pricing copy can be added at 4.0.0 upload prep. Remaining LB: mirror disclosure on promptboxapp.com/privacy (site repo) before store upload."
+      ]
+    },
+    {
+      "id": "B3-8",
+      "title": "Whole-branch review + PR (build 2 land)",
+      "priority": 14,
+      "status": "needs-lb-review",
+      "passes": true,
+      "description": "Whole-branch subagent review of feature/pro-b2-phase3-billing (functions + migration + extension changes), fix findings, re-verify, push, gh pr create with LB runbook + live-test checklist. Merge on LB word. If PR #5 merged first, rebase onto main before the PR.",
+      "acceptanceCriteria": [
+        "review clean or fixed",
+        "lint+security 0",
+        "deno check 0",
+        "PR open with runbook checklist"
+      ],
+      "chromeVerification": {
+        "setup": "n/a (review story)",
+        "flow": [],
+        "assertions": [
+          "gh pr view returns the open PR URL"
+        ],
+        "needsHumanEye": [
+          "LB runbook + live checklist in PR body"
+        ]
+      },
+      "notes": [
+        "2026-07-10: whole-branch review found 1 Critical (mismatch design silently uploaded the previous account's cached prompts into the new account's cloud; backgroundPull unaware of accounts) -> fixed 8d0edc5 (drop-don't-adopt + disarm cloud + backgroundPull guard), harness re-verified. Re-review verdict: READY - Critical RESOLVED, zero new reportable issues; two ~30-40 confidence timing notes (refreshCloudOption racing reconciliation - self-corrects on reopen; webhook NULL-plan .neq edge) recorded, not blocking. Reviewer verified clean: RLS both-policy upsert trace, tombstone WITH CHECK via 0002 default, signature-before-parse, claim/release idempotency race-safety, no secrets, XSS/CSP, pack list, docs accuracy. PR opened; merge gated on LB runbook + live test."
       ]
     }
   ]

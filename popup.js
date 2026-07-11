@@ -270,11 +270,15 @@ function setupEventListeners() {
 // signed out can't apply its stale answer afterwards.
 let entitlementEpoch = 0;
 
+// Whether renderAccount last saw a live session (drives the plan picker).
+let accountSignedIn = false;
+
 // Paints instantly from the pb_is_pro cache; refreshCloudOption updates the
 // cache on every DEFINITIVE entitlement answer. Display state only — gates nothing.
 function renderProBadge() {
-  chrome.storage.local.get(['pb_is_pro'], function (r) {
+  chrome.storage.local.get(['pb_is_pro', 'pb_plan'], function (r) {
     const isPro = r.pb_is_pro === true;
+    renderPlanPicker(isPro, r.pb_plan || null);
     const label = isPro ? 'Prompt Box Pro member' : 'Get Prompt Box Pro';
     const header = document.getElementById('proBadgeHeader');
     const account = document.getElementById('proBadgeAccount');
@@ -315,17 +319,112 @@ async function renderAccount() {
     signedOut.style.display = 'none';
     signedIn.style.display = 'block';
     document.getElementById('accountEmail').textContent = session.email;
+    accountSignedIn = true;
   } else {
     signedOut.style.display = 'block';
     signedIn.style.display = 'none';
+    accountSignedIn = false;
+    // Definitive sign-out/expiry only: when the stored session is GONE (the
+    // refresh token was rejected and getSession cleared it), the vivid badge
+    // must not survive. A transient refresh failure keeps pb_session in
+    // storage and changes nothing here (offline-first).
+    chrome.storage.local.get(['pb_session'], function (r) {
+      if (!r.pb_session) {
+        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+      }
+    });
   }
+  renderProBadge(); // instant picker/plan paint from cache; the fetch below refines it
   refreshCloudOption();
+}
+
+// ---- Upgrade to Pro (plan picker + Stripe Checkout hand-off) ----
+const PLAN_LABELS = new Map([
+  ['monthly', 'Pro Monthly'],
+  ['annual', 'Pro Annual'],
+  ['lifetime', 'Founding Lifetime'],
+]);
+
+// Picker shows only when signed in AND not Pro; Pro users see their plan name.
+function renderPlanPicker(isPro, plan) {
+  const section = document.getElementById('upgradeSection');
+  const planLine = document.getElementById('accountPlan');
+  if (!section) return;
+  section.style.display = accountSignedIn && !isPro ? 'block' : 'none';
+  if (planLine) {
+    planLine.textContent = isPro ? 'Plan: ' + (PLAN_LABELS.get(plan) || 'Pro') : '';
+  }
+}
+
+function hideLifetimeOption() {
+  const row = document.getElementById('planLifetimeRow');
+  if (!row) return;
+  const radio = row.querySelector('input');
+  if (radio && radio.checked) {
+    const monthly = document.querySelector('input[name="proPlan"][value="monthly"]');
+    if (monthly) monthly.checked = true;
+  }
+  row.style.display = 'none';
+}
+
+async function startUpgrade() {
+  const statusEl = document.getElementById('upgradeStatus');
+  const btn = document.getElementById('upgradeBtn');
+  const selected = document.querySelector('input[name="proPlan"]:checked');
+  if (!statusEl || !btn || !selected) return;
+  const epoch = entitlementEpoch;
+  btn.disabled = true;
+  statusEl.textContent = 'Preparing checkout…';
+  try {
+    const token = await PBAuth.getAccessToken();
+    if (epoch !== entitlementEpoch) return;
+    if (!token) {
+      statusEl.textContent = 'Session expired — please sign in again.';
+      return;
+    }
+    const res = await fetch(PB_SYNC_CONFIG.functionsBase + '/create-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: PB_SYNC_CONFIG.supabaseAnonKey,
+        Authorization: 'Bearer ' + token,
+      },
+      body: JSON.stringify({ plan: selected.value }),
+    });
+    if (epoch !== entitlementEpoch) return;
+    if (res.status === 409) {
+      hideLifetimeOption();
+      statusEl.textContent = 'Founding Lifetime is sold out — pick another plan.';
+      return;
+    }
+    if (res.status === 401) {
+      statusEl.textContent = 'Session expired — please sign in again.';
+      return;
+    }
+    if (!res.ok) {
+      statusEl.textContent = 'Could not start checkout. Please try again.';
+      return;
+    }
+    const data = await res.json();
+    if (!data || typeof data.url !== 'string') {
+      statusEl.textContent = 'Could not start checkout. Please try again.';
+      return;
+    }
+    chrome.tabs.create({ url: data.url });
+    statusEl.textContent = 'Finish checkout in the new tab, then reopen Prompt Box.';
+  } catch (e) {
+    statusEl.textContent = 'Network error — please try again.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function setupAccountUI() {
   const signInBtn = document.getElementById('signInBtn');
   const signOutBtn = document.getElementById('signOutBtn');
   const status = document.getElementById('authStatus');
+  const upgradeBtn = document.getElementById('upgradeBtn');
+  if (upgradeBtn) upgradeBtn.addEventListener('click', startUpgrade);
   if (signInBtn) {
     signInBtn.addEventListener('click', async function () {
       entitlementEpoch++;
@@ -344,7 +443,7 @@ function setupAccountUI() {
       entitlementEpoch++;
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
-      chrome.storage.local.set({ pb_is_pro: false }, renderProBadge);
+      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
       chrome.storage.local.remove('pb_sync_offer_dismissed');
       await renderAccount();
     });
@@ -514,7 +613,7 @@ function hideForm() {
 // Load all prompts from Chrome storage, respecting the user's storagePref
 function loadPrompts() {
   // Always read storagePref from local (it lives locally regardless of sync setting)
-  chrome.storage.local.get(['storagePref', 'prompts', 'syncFallback'], function (localResult) {
+  chrome.storage.local.get(['storagePref', 'prompts', 'syncFallback', 'pb_session', 'pb_sync_user'], function (localResult) {
     storagePref = localResult.storagePref || 'sync';
     updateStoragePrefUI();
 
@@ -525,18 +624,52 @@ function loadPrompts() {
       displayPrompts(); // instant paint, offline-safe
       chrome.storage.sync.get(['availableTags', 'filterSettings'], function (syncResult) {
         finishLoadPrompts(prompts, syncResult, localResult);
-        const pulledFrom = prompts;
-        PBSync.pullRemoteChanges(prompts).then(function (res) {
-          if (res && res.ok && prompts === pulledFrom) {
-            if (res.changed) {
-              prompts = res.prompts;
-              chrome.storage.local.set({ prompts: prompts });
+        // Sync state is keyed to an account. A session belonging to a
+        // DIFFERENT user than the one the cursors/tombstones were built for
+        // (silent expiry + new sign-in skips the sign-out reset) must never
+        // inherit the previous account's sync relationship: no cursors, no
+        // queued tombstones, and — critically — no silent upload of the
+        // previous account's cached prompts into the new account's cloud.
+        const sessionUser = (localResult.pb_session && localResult.pb_session.user_id) || null;
+        const syncUser = localResult.pb_sync_user || null;
+        if (sessionUser && syncUser && sessionUser !== syncUser) {
+          PBSync.resetSyncState().then(function () {
+            // Drop the previous account's cloud rows from this device (their
+            // cloud copies are untouched); keep never-synced local prompts.
+            // Cloud mode was the PREVIOUS account's explicit arming — turn it
+            // off. The new user gets the standard one-click cloud-sync offer
+            // instead; nothing leaves this device without their click.
+            prompts = prompts.filter(function (p) { return !p.uuid; });
+            chrome.storage.local.set({ prompts: prompts, storagePref: 'local' }, function () {
+              storagePref = 'local';
+              updateStoragePrefUI();
               rerenderPrompts();
+              updateSyncStatus();
+            });
+          });
+          return;
+        }
+        const ensureSyncOwner = (sessionUser && !syncUser)
+          ? new Promise(function (res) { chrome.storage.local.set({ pb_sync_user: sessionUser }, res); })
+          : Promise.resolve();
+        ensureSyncOwner.then(function () {
+          const pulledFrom = prompts;
+          PBSync.pullRemoteChanges(prompts).then(function (res) {
+            if (res && res.ok && prompts === pulledFrom) {
+              if (res.changed) {
+                prompts = res.prompts;
+                chrome.storage.local.set({ prompts: prompts });
+                rerenderPrompts();
+              }
+              PBSync.commitPullCursor(res.cursor);
             }
-            PBSync.commitPullCursor(res.cursor);
-          }
-          updateSyncStatus();
-        }).catch(function () { updateSyncStatus(); });
+            updateSyncStatus();
+            retryPendingPush();
+          }).catch(function () {
+            updateSyncStatus();
+            retryPendingPush();
+          });
+        });
       });
       return;
     }
@@ -597,6 +730,32 @@ function finishLoadPrompts(loadedPrompts, syncResult, localResult) {
     if (settings.sortBy) document.getElementById('sortBy').value = settings.sortBy;
     filterAndSortPrompts();
   }
+}
+
+// A push that failed while the popup was open (or a first migration that
+// 403'd) used to stay queued until the NEXT edit. On popup open, if anything
+// is pending — queued tombstones or prompts newer than the push cursor —
+// send it now. pushLocalChanges itself is a no-op (no network) when idle.
+function retryPendingPush() {
+  if (storagePref !== 'cloud') return;
+  chrome.storage.local.get(['pb_tombstones', 'pb_last_push'], function (state) {
+    const lastPush = state.pb_last_push || 0;
+    const pendingTombstones = (state.pb_tombstones || []).length > 0;
+    const pendingEdits = prompts.some(function (p) { return (p.updatedAt || 0) > lastPush; });
+    if (!pendingTombstones && !pendingEdits) return;
+    const arr = prompts;
+    // Same ordering as savePrompts: persist uuid backfill BEFORE pushing so a
+    // popup close mid-push can't fork duplicate cloud rows.
+    PBSync.ensureUuids(arr);
+    chrome.storage.local.set({ prompts: arr }, function () {
+      PBSync.pushLocalChanges(arr).then(function () {
+        if (prompts === arr) {
+          chrome.storage.local.set({ prompts: arr });
+        }
+        updateSyncStatus();
+      }).catch(function () { updateSyncStatus(); });
+    });
+  });
 }
 
 // Re-paint the whole prompt list from the current in-memory `prompts` array.
@@ -778,7 +937,7 @@ async function refreshCloudOption() {
   // Definitive answer (non-null): refresh the badge cache. A transient null
   // never changes it — same rule as the cloud-mode demotion below.
   if (ent) {
-    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true }, renderProBadge);
+    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, renderProBadge);
   }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';

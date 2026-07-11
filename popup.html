@@ -762,6 +762,97 @@
     }
 
     /* ========================================
+       Upgrade to Pro (Account panel)
+       ======================================== */
+    .upgrade-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--color-text-primary);
+      margin: 8px 0 6px;
+    }
+
+    .plan-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .plan-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      cursor: pointer;
+      font-size: 13px;
+      margin: 0;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .plan-option:hover {
+      background: var(--color-surface-hover);
+    }
+
+    /* The checked plan reads at a glance — same accent treatment as the
+       active Select button. */
+    .plan-option:has(input:checked) {
+      border-color: var(--color-accent);
+      background: var(--color-accent-light);
+    }
+
+    .plan-option input {
+      /* The global input rule sets width: 100% for text fields; a radio in a
+         flex row must keep its natural size or it distorts the whole line. */
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      accent-color: var(--color-accent);
+      margin: 0;
+    }
+
+    .plan-option .plan-name {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      color: var(--color-text-primary);
+      font-weight: 500;
+    }
+
+    .plan-option .plan-price {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      color: var(--color-text-muted);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .upgrade-btn {
+      width: 100%;
+      background: var(--color-accent);
+      color: #ffffff;
+      border: none;
+      padding: 9px 16px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      transition: background 0.15s ease;
+    }
+
+    .upgrade-btn:hover:not(:disabled) {
+      background: var(--color-accent-hover);
+    }
+
+    .upgrade-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* ========================================
        Prompt List
        ======================================== */
     .prompt-list {
@@ -1939,6 +2030,28 @@
             <span id="proBadgeWord" class="pro-badge-word" style="display:none;">PRO MEMBER</span>
           </p>
           <p id="accountPlan" style="color: var(--color-text-secondary); font-size: 13px;"></p>
+          <div id="upgradeSection" style="display:none;">
+            <div class="upgrade-title">Upgrade to Pro — unlock cloud sync</div>
+            <div class="plan-options" role="radiogroup" aria-label="Choose a plan">
+              <label class="plan-option">
+                <input type="radio" name="proPlan" value="monthly" checked>
+                <span class="plan-name">Pro Monthly</span>
+                <span class="plan-price">$2.99/mo</span>
+              </label>
+              <label class="plan-option">
+                <input type="radio" name="proPlan" value="annual">
+                <span class="plan-name">Pro Annual</span>
+                <span class="plan-price">$19/yr</span>
+              </label>
+              <label class="plan-option" id="planLifetimeRow">
+                <input type="radio" name="proPlan" value="lifetime">
+                <span class="plan-name">Founding Lifetime</span>
+                <span class="plan-price">$39 once</span>
+              </label>
+            </div>
+            <button class="upgrade-btn" id="upgradeBtn" type="button">Upgrade</button>
+            <div class="import-status" id="upgradeStatus" role="status"></div>
+          </div>
           <button class="import-export-btn" id="signOutBtn" style="width:100%;">Sign out</button>
         </div>
       </div>

@@ -34,7 +34,7 @@ Dashboard → SQL editor → paste `supabase/migrations/0003_billing.sql` → ru
 
 Quick check afterwards (SQL editor):
 ```sql
-select polname from pg_policies where tablename = 'prompts';
+select policyname from pg_policies where tablename = 'prompts';
 -- expect: prompts_select_own, prompts_insert_own_pro, prompts_update_own_pro, prompts_delete_own
 ```
 

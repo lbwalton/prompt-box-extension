@@ -781,33 +781,52 @@
     .plan-option {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
+      gap: 10px;
+      padding: 10px 12px;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-md);
       background: var(--color-surface);
       cursor: pointer;
       font-size: 13px;
+      margin: 0;
+      transition: border-color 0.15s ease, background 0.15s ease;
     }
 
     .plan-option:hover {
       background: var(--color-surface-hover);
     }
 
+    /* The checked plan reads at a glance — same accent treatment as the
+       active Select button. */
+    .plan-option:has(input:checked) {
+      border-color: var(--color-accent);
+      background: var(--color-accent-light);
+    }
+
     .plan-option input {
+      /* The global input rule sets width: 100% for text fields; a radio in a
+         flex row must keep its natural size or it distorts the whole line. */
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
       accent-color: var(--color-accent);
       margin: 0;
     }
 
     .plan-option .plan-name {
       flex: 1;
+      min-width: 0;
+      text-align: left;
       color: var(--color-text-primary);
       font-weight: 500;
     }
 
     .plan-option .plan-price {
+      flex: 0 0 auto;
+      white-space: nowrap;
       color: var(--color-text-muted);
       font-weight: 600;
+      font-variant-numeric: tabular-nums;
     }
 
     .upgrade-btn {

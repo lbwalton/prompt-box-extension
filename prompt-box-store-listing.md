@@ -90,15 +90,15 @@ Update, rename, retag, or delete anything at any time. Your library evolves as y
 
 ---
 
-### 🔒 Your Data, Your Machine
+### 🔒 Local-First By Default
 
 - Everything stored locally using Chrome's secure extension storage
-- Prompts sync automatically across Chrome profiles via Chrome Sync, no account needed
-- No external servers, no tracking, no third-party data sharing
+- Prompts sync across Chrome profiles via Chrome Sync, no account needed
+- No tracking, no analytics, no third-party ad data sharing
 - Your prompts and expansions persist through browser cache clears
 - Export to CSV anytime for a personal backup
 - Export your library before uninstalling, removing the extension permanently deletes all stored data
-- Nothing leaves your device except Chrome's built-in sync
+- By default nothing leaves your device except Chrome's built-in sync. **Prompt Box Pro is optional and opt-in:** only if you sign in and turn on Cloud sync are your prompts stored on our secure backend (encrypted in transit and at rest) so they follow you across devices. Payment for Pro is handled entirely on Stripe's hosted checkout page; the extension never sees your card details.
 
 ---
 

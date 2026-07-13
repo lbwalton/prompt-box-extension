@@ -114,12 +114,39 @@ This data is managed entirely by Chrome's built-in storage APIs. When a user cho
 
 | Data | Stored Where | Leaves Device? |
 |------|-------------|----------------|
-| Prompt library | chrome.storage.local or .sync | Only via Google Chrome Sync (if enabled by user) |
+| Prompt library | chrome.storage.local or .sync | Via Google Chrome Sync (if enabled); to our Supabase backend only if the user signs in and turns on Pro Cloud sync |
 | Tags & settings | chrome.storage.sync | Only via Google Chrome Sync |
+| Account email + sign-in session | chrome.storage.local (Pro only) | Sent to Supabase Auth (Google sign-in) only when the user signs in to Pro |
+| Subscription status (is_pro, plan) | chrome.storage.local (Pro only) | Read from our Supabase backend; set only by our payment webhook |
+| Payment/card details | Never stored or seen by the extension | Entered only on Stripe's hosted checkout page |
 | Survey response | Cloudflare Worker (lbwalton.workers.dev) | Yes — only on explicit user action |
 | Keystrokes | Never stored | No |
 | Browsing history | Never accessed | No |
 | Page content | Never accessed | No |
+
+---
+
+## Data Collection Disclosure (Chrome Web Store form checkboxes)
+
+These map to the "Data collection" section of the Privacy Practices tab. As of 4.0.0 (Pro):
+
+- ✅ **Personally identifiable information** — the account **email address** (Pro sign-in only).
+- ✅ **Authentication information** — the sign-in session token (Pro sign-in only).
+- ⬜ **Financial and payment information** — NOT collected. Card details are entered only on
+  Stripe's hosted page; the extension never sees or stores them. (The extension stores only a
+  Pro/not-Pro status flag and a Stripe customer identifier, which are not payment instrument data.)
+- ⬜ Website content, Web history, User activity, Location, Health, Personal communications — none collected.
+- The user's **prompt library** is user-authored content the user chooses to store/sync; it is not
+  scraped from websites and does not map to the "Website content" category. Cloud sync (Supabase)
+  is disclosed above and in the privacy policy.
+
+Certifications (all remain TRUE — check all three):
+- I do not sell or transfer user data to third parties, outside the approved use cases.
+- I do not use or transfer user data for purposes unrelated to the item's single purpose.
+- I do not use or transfer user data to determine creditworthiness or for lending purposes.
+
+Also confirm: Remote code = **No** (all JS is bundled locally). Privacy policy URL =
+`https://promptboxapp.com/privacy`.
 
 ---
 

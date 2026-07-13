@@ -42,6 +42,28 @@ created server-side, but it is harmless to record.
 
 Dashboard: https://dashboard.stripe.com/test/products
 
+## Stripe (LIVE mode)
+
+Account: `acct_1TpZ6qKBB0KFSFPS` (Prompt Box live account, activated 2026-07-13; separate from the
+sandbox `acct_1TpZ8OGuSTSqtrBZ`). Products/prices copied from the sandbox on activation, so the
+**product** IDs match test but the **price** IDs are new (below). These are the values the Edge
+Function `PRICE_*` secrets must hold at launch.
+
+| Item | ID | Amount |
+|------|-----|--------|
+| Product: Prompt Box Pro | `prod_UpDnaBehPQBYS1` | — |
+| Price: Pro Monthly (live) | `price_1Tsg9oKBB0KFSFPScNSTBKiL` | $2.99 / month (recurring) |
+| Price: Pro Annual (live) | `price_1Tsg9mKBB0KFSFPSSWWKRrHx` | $19.00 / year (recurring) |
+| Product: Prompt Box Founding Lifetime | `prod_UpDrdAJM6tVvdQ` | — |
+| Price: Founding Lifetime (live) | `price_1Tsg9hKBB0KFSFPSuP27GpVH` | $39.00 one-time |
+
+Live dashboard: https://dashboard.stripe.com/acct_1TpZ6qKBB0KFSFPS/products
+
+> **Activation gate (2026-07-13):** the live account shows "Multiple capabilities paused — 1 required
+> task is past due." Live charges may be blocked until LB clears that task in the dashboard
+> (Home → the flagged onboarding/verification task). Confirm capabilities are active before flipping
+> the extension's secrets to live.
+
 ---
 
 ## Secrets (NEVER in this file, never in git)

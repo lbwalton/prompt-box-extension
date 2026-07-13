@@ -73,8 +73,11 @@ Star your highest-use prompts and expansions. They surface first so your best ma
 Choose where your prompts live. Enable Chrome Sync to automatically sync your library across every Chrome profile signed into the same Google account — no account required. Or keep everything strictly local to a single device. Switch at any time in Settings.
 
 **Prompt Box Pro (optional):** sign in with Google and turn on Cloud sync to keep your
-prompts in sync across browsers and devices, offline-first. The free extension stays
-local-first and requires no account — nothing leaves your device unless you enable sync.
+prompts in sync across browsers and devices, offline-first. Upgrade right inside the
+extension — Pro Monthly ($2.99/mo), Pro Annual ($19/yr), or a limited Founding Lifetime
+($39 once) — with payment handled entirely on Stripe's secure checkout page. The free
+extension stays local-first and requires no account — nothing leaves your device unless
+you enable sync.
 
 **Import / Export**
 Export your entire library to CSV for backup. Import from a spreadsheet to bulk-load your team's shared prompts or migrate from another tool.

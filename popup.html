@@ -2001,7 +2001,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span id="backupNoticeText">Your prompts are stored only on this device. Export a CSV backup before removing the extension or resetting Chrome to avoid losing your library.</span>
+        <span>
+          <span id="backupNoticeText">Your prompts are stored only on this device. Export a CSV backup before removing the extension or resetting Chrome to avoid losing your library.</span>
+          <span id="backupNoticePro" style="display:none;"> Prefer automatic backups? <button class="about-link" id="backupNoticeProBtn" style="font-size:12px;">That's Prompt Box Pro.</button></span>
+        </span>
       </div>
       <div class="import-export-row">
         <button class="import-export-btn" id="exportBtn">Export CSV</button>
@@ -2019,6 +2022,7 @@
       <div class="about-section">
         <p>Version: <strong id="appVersion">4.0.0</strong></p>
         <p>Prompts sync across Chrome profiles via Chrome Sync. Use <strong>Import / Export</strong> to back up your library before uninstalling.</p>
+        <p>Cloud sync across devices, no size limits. <button class="about-link" id="aboutProBtn">Get Prompt Box Pro</button></p>
         <button class="about-link" id="viewChangelogBtn">View Release Notes</button>
         <div class="changelog-preview" id="changelogPreview">Loading changes...</div>
       </div>

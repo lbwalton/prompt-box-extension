@@ -248,6 +248,18 @@ function setupEventListeners() {
   document.getElementById('syncFallbackExportBtn')?.addEventListener('click', exportPrompts);
   document.getElementById('syncFallbackExportLink')?.addEventListener('click', exportPrompts);
   document.getElementById('syncFallbackUpgradeBtn')?.addEventListener('click', openAccountPanel);
+  document.getElementById('backupNoticeProBtn')?.addEventListener('click', openAccountPanel);
+  document.getElementById('aboutProBtn')?.addEventListener('click', openAccountPanel);
+  // Locked Cloud row (non-Pro): the row opens the Account tab instead of
+  // being a dead end. Pro users keep the normal radio behavior; the radio
+  // itself stays disabled either way, so no accidental mode switch.
+  document.getElementById('storagePrefCloudOption')?.addEventListener('click', function (e) {
+    const radio = document.getElementById('storagePrefCloud');
+    if (radio && radio.disabled) {
+      e.preventDefault();
+      openAccountPanel();
+    }
+  });
 
   // Set up event delegation for prompt buttons + peek-to-reveal
   const promptList = document.getElementById('promptList');
@@ -916,14 +928,19 @@ function updateStoragePrefUI() {
   updateBackupNotice();
 }
 
-// Update the backup notice text to match current storage mode
+// Update the backup notice text to match current storage mode. The quiet
+// Pro pointer shows only in local mode, where "manual CSV backups" is the
+// pain cloud sync removes; sync mode keeps the plain warning.
 function updateBackupNotice() {
   const notice = document.getElementById('backupNoticeText');
+  const proLine = document.getElementById('backupNoticePro');
   if (!notice) return;
   if (storagePref === 'local') {
     notice.textContent = 'Your prompts are stored only on this device. Export a CSV backup before removing the extension or resetting Chrome to avoid losing your library.';
+    if (proLine) proLine.style.display = 'inline';
   } else {
     notice.textContent = 'Your prompts sync across Chrome profiles, but removing the extension from all devices permanently deletes synced data. Export a CSV backup before uninstalling.';
+    if (proLine) proLine.style.display = 'none';
   }
 }
 
@@ -983,6 +1000,7 @@ async function refreshCloudOption() {
   }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';
+  wrapper.title = allowed ? '' : 'Requires Prompt Box Pro. Click to learn more.';
   if (badge) badge.style.display = allowed ? 'none' : 'inline';
   // Only demote out of cloud mode on a DEFINITIVE "not Pro" answer. A null
   // entitlement (offline, token blip, transient error) must not kick a Pro

@@ -77,7 +77,29 @@
   var seededPrompts;
   if (mode === 'sync') {
     seededPrompts = clone(FIXTURES);
-    syncSeed.prompts = seededPrompts;
+    // ?fallback=1 -> the library already overflowed Chrome Sync: the local
+    // copy is authoritative (popup.js syncFallback load path) and the
+    // fallback banner must show. ?signedin=1 adds a session; combine with
+    // ?pro=0 for the signed-in-but-free upsell state (the profiles route
+    // below answers is_pro to match config.pro).
+    if (config.fallback === '1') {
+      localSeed.syncFallback = true;
+      localSeed.prompts = seededPrompts;
+    } else {
+      syncSeed.prompts = seededPrompts;
+    }
+    if (config.signedin === '1') {
+      var syncIsPro = config.pro !== '0';
+      localSeed.pb_session = {
+        access_token: 'harness-access-token',
+        refresh_token: 'harness-refresh-token',
+        expires_at: Date.now() + 6 * 3600 * 1000,
+        email: 'harness@promptbox.test',
+        user_id: 'harness-user-0001',
+      };
+      localSeed.pb_is_pro = syncIsPro;
+      localSeed.pb_plan = syncIsPro ? 'lifetime' : null;
+    }
     // storagePref unset -> popup defaults to 'sync'
   } else if (mode === 'cloud') {
     // First 8 fixtures have cloud uuids; the last 2 are local-only (never pushed).

@@ -332,7 +332,10 @@ async function renderAccount() {
     // storage and changes nothing here (offline-first).
     chrome.storage.local.get(['pb_session'], function (r) {
       if (!r.pb_session) {
-        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, function () {
+          renderProBadge();
+          refreshSyncFallbackVariant();
+        });
       }
     });
   }
@@ -445,7 +448,10 @@ function setupAccountUI() {
       entitlementEpoch++;
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
-      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, function () {
+        renderProBadge();
+        refreshSyncFallbackVariant();
+      });
       chrome.storage.local.remove('pb_sync_offer_dismissed');
       await renderAccount();
     });
@@ -848,12 +854,18 @@ function savePrompts(promptsArray, callback) {
       });
     } else {
       chrome.storage.local.remove('syncFallback');
+      syncFallbackEpoch++;
       const banner = document.getElementById('syncFallbackBanner');
       if (banner) banner.style.display = 'none';
       if (callback) callback();
     }
   });
 }
+
+// Bumped whenever the banner is deliberately hidden: an in-flight
+// showSyncFallbackBanner() storage read from before the hide must not
+// resurrect the banner (same pattern as entitlementEpoch).
+let syncFallbackEpoch = 0;
 
 // Show the sync quota fallback banner. Non-Pro users see the Pro upsell
 // variant (cloud sync is the actual fix for outgrowing Chrome Sync); Pro
@@ -864,7 +876,9 @@ function savePrompts(promptsArray, callback) {
 function showSyncFallbackBanner() {
   const banner = document.getElementById('syncFallbackBanner');
   if (!banner) return;
+  const epoch = syncFallbackEpoch;
   chrome.storage.local.get(['pb_is_pro'], function (r) {
+    if (epoch !== syncFallbackEpoch) return;
     const isPro = r.pb_is_pro === true;
     const info = document.getElementById('syncFallbackInfo');
     const upsell = document.getElementById('syncFallbackUpsell');
@@ -894,6 +908,7 @@ function updateStoragePrefUI() {
 
   // Hide sync fallback banner if user switched to local mode
   if (storagePref === 'local') {
+    syncFallbackEpoch++;
     const banner = document.getElementById('syncFallbackBanner');
     if (banner) banner.style.display = 'none';
   }

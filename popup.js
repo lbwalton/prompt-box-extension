@@ -246,6 +246,20 @@ function setupEventListeners() {
 
   // Sync fallback banner — export shortcut
   document.getElementById('syncFallbackExportBtn')?.addEventListener('click', exportPrompts);
+  document.getElementById('syncFallbackExportLink')?.addEventListener('click', exportPrompts);
+  document.getElementById('syncFallbackUpgradeBtn')?.addEventListener('click', openAccountPanel);
+  document.getElementById('backupNoticeProBtn')?.addEventListener('click', openAccountPanel);
+  document.getElementById('aboutProBtn')?.addEventListener('click', openAccountPanel);
+  // Locked Cloud row (non-Pro): the row opens the Account tab instead of
+  // being a dead end. Pro users keep the normal radio behavior; the radio
+  // itself stays disabled either way, so no accidental mode switch.
+  document.getElementById('storagePrefCloudOption')?.addEventListener('click', function (e) {
+    const radio = document.getElementById('storagePrefCloud');
+    if (radio && radio.disabled) {
+      e.preventDefault();
+      openAccountPanel();
+    }
+  });
 
   // Set up event delegation for prompt buttons + peek-to-reveal
   const promptList = document.getElementById('promptList');
@@ -330,7 +344,10 @@ async function renderAccount() {
     // storage and changes nothing here (offline-first).
     chrome.storage.local.get(['pb_session'], function (r) {
       if (!r.pb_session) {
-        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+        chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, function () {
+          renderProBadge();
+          refreshSyncFallbackVariant();
+        });
       }
     });
   }
@@ -443,7 +460,10 @@ function setupAccountUI() {
       entitlementEpoch++;
       await PBAuth.signOut();
       try { await PBSync.resetSyncState(); } catch (e) { /* best effort */ }
-      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, renderProBadge);
+      chrome.storage.local.set({ pb_is_pro: false, pb_plan: null }, function () {
+        renderProBadge();
+        refreshSyncFallbackVariant();
+      });
       chrome.storage.local.remove('pb_sync_offer_dismissed');
       await renderAccount();
     });
@@ -846,6 +866,7 @@ function savePrompts(promptsArray, callback) {
       });
     } else {
       chrome.storage.local.remove('syncFallback');
+      syncFallbackEpoch++;
       const banner = document.getElementById('syncFallbackBanner');
       if (banner) banner.style.display = 'none';
       if (callback) callback();
@@ -853,10 +874,39 @@ function savePrompts(promptsArray, callback) {
   });
 }
 
-// Show the sync quota fallback banner
+// Bumped whenever the banner is deliberately hidden: an in-flight
+// showSyncFallbackBanner() storage read from before the hide must not
+// resurrect the banner (same pattern as entitlementEpoch).
+let syncFallbackEpoch = 0;
+
+// Show the sync quota fallback banner. Non-Pro users see the Pro upsell
+// variant (cloud sync is the actual fix for outgrowing Chrome Sync); Pro
+// users keep the informational text, because the cloud-sync offer banner
+// already gives them the one-click fix and two banners must never pitch
+// at once. pb_is_pro is the same display-only cache the header badge
+// paints from; it gates nothing.
 function showSyncFallbackBanner() {
   const banner = document.getElementById('syncFallbackBanner');
-  if (banner) banner.style.display = 'block';
+  if (!banner) return;
+  const epoch = syncFallbackEpoch;
+  chrome.storage.local.get(['pb_is_pro'], function (r) {
+    if (epoch !== syncFallbackEpoch) return;
+    const isPro = r.pb_is_pro === true;
+    const info = document.getElementById('syncFallbackInfo');
+    const upsell = document.getElementById('syncFallbackUpsell');
+    if (info) info.style.display = isPro ? 'block' : 'none';
+    if (upsell) upsell.style.display = isPro ? 'none' : 'block';
+    banner.style.display = 'block';
+  });
+}
+
+// Re-pick the banner variant after a definitive entitlement answer (e.g.
+// the user upgraded on another device, then reopened the popup): a visible
+// banner must not keep pitching Pro to a paying member. No-op when the
+// banner is hidden.
+function refreshSyncFallbackVariant() {
+  const banner = document.getElementById('syncFallbackBanner');
+  if (banner && banner.style.display === 'block') showSyncFallbackBanner();
 }
 
 // Update the storage preference radio UI to reflect current storagePref value
@@ -870,6 +920,7 @@ function updateStoragePrefUI() {
 
   // Hide sync fallback banner if user switched to local mode
   if (storagePref === 'local') {
+    syncFallbackEpoch++;
     const banner = document.getElementById('syncFallbackBanner');
     if (banner) banner.style.display = 'none';
   }
@@ -877,14 +928,19 @@ function updateStoragePrefUI() {
   updateBackupNotice();
 }
 
-// Update the backup notice text to match current storage mode
+// Update the backup notice text to match current storage mode. The quiet
+// Pro pointer shows only in local mode, where "manual CSV backups" is the
+// pain cloud sync removes; sync mode keeps the plain warning.
 function updateBackupNotice() {
   const notice = document.getElementById('backupNoticeText');
+  const proLine = document.getElementById('backupNoticePro');
   if (!notice) return;
   if (storagePref === 'local') {
     notice.textContent = 'Your prompts are stored only on this device. Export a CSV backup before removing the extension or resetting Chrome to avoid losing your library.';
+    if (proLine) proLine.style.display = 'inline';
   } else {
     notice.textContent = 'Your prompts sync across Chrome profiles, but removing the extension from all devices permanently deletes synced data. Export a CSV backup before uninstalling.';
+    if (proLine) proLine.style.display = 'none';
   }
 }
 
@@ -937,10 +993,14 @@ async function refreshCloudOption() {
   // Definitive answer (non-null): refresh the badge cache. A transient null
   // never changes it — same rule as the cloud-mode demotion below.
   if (ent) {
-    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, renderProBadge);
+    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, function () {
+      renderProBadge();
+      refreshSyncFallbackVariant();
+    });
   }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';
+  wrapper.title = allowed ? '' : 'Requires Prompt Box Pro. Click to learn more.';
   if (badge) badge.style.display = allowed ? 'none' : 'inline';
   // Only demote out of cloud mode on a DEFINITIVE "not Pro" answer. A null
   // entitlement (offline, token blip, transient error) must not kick a Pro

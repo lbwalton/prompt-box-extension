@@ -1,5 +1,11 @@
 # Changelog
 
+## [4.0.1] - 2026-07-20
+### Changed
+- When your library outgrows Chrome Sync, the warning banner now offers the real fix: Prompt Box Pro cloud sync has no size limit. The CSV backup option is still right there. Pro members keep the original notice.
+- The "Prompt Box Cloud" storage option now opens the Account panel when clicked while locked, instead of doing nothing.
+- Added small pointers to Prompt Box Pro in the device-only backup notice and the About panel. No popups, nothing to dismiss.
+
 ## [4.0.0] - 2026-07-11
 ### Added
 - **Prompt Box Pro: cloud sync across devices.** Sign in with Google, upgrade to Pro, and turn on Cloud sync to keep your prompt library in sync across browsers and computers — offline-first, so the popup is always instant and edits made offline catch up automatically. The free extension is unchanged: local-first, no account needed, and nothing leaves your device unless you sign in and turn sync on.

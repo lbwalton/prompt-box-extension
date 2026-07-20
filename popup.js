@@ -246,6 +246,8 @@ function setupEventListeners() {
 
   // Sync fallback banner — export shortcut
   document.getElementById('syncFallbackExportBtn')?.addEventListener('click', exportPrompts);
+  document.getElementById('syncFallbackExportLink')?.addEventListener('click', exportPrompts);
+  document.getElementById('syncFallbackUpgradeBtn')?.addEventListener('click', openAccountPanel);
 
   // Set up event delegation for prompt buttons + peek-to-reveal
   const promptList = document.getElementById('promptList');
@@ -853,10 +855,32 @@ function savePrompts(promptsArray, callback) {
   });
 }
 
-// Show the sync quota fallback banner
+// Show the sync quota fallback banner. Non-Pro users see the Pro upsell
+// variant (cloud sync is the actual fix for outgrowing Chrome Sync); Pro
+// users keep the informational text, because the cloud-sync offer banner
+// already gives them the one-click fix and two banners must never pitch
+// at once. pb_is_pro is the same display-only cache the header badge
+// paints from; it gates nothing.
 function showSyncFallbackBanner() {
   const banner = document.getElementById('syncFallbackBanner');
-  if (banner) banner.style.display = 'block';
+  if (!banner) return;
+  chrome.storage.local.get(['pb_is_pro'], function (r) {
+    const isPro = r.pb_is_pro === true;
+    const info = document.getElementById('syncFallbackInfo');
+    const upsell = document.getElementById('syncFallbackUpsell');
+    if (info) info.style.display = isPro ? 'block' : 'none';
+    if (upsell) upsell.style.display = isPro ? 'none' : 'block';
+    banner.style.display = 'block';
+  });
+}
+
+// Re-pick the banner variant after a definitive entitlement answer (e.g.
+// the user upgraded on another device, then reopened the popup): a visible
+// banner must not keep pitching Pro to a paying member. No-op when the
+// banner is hidden.
+function refreshSyncFallbackVariant() {
+  const banner = document.getElementById('syncFallbackBanner');
+  if (banner && banner.style.display === 'block') showSyncFallbackBanner();
 }
 
 // Update the storage preference radio UI to reflect current storagePref value
@@ -937,7 +961,10 @@ async function refreshCloudOption() {
   // Definitive answer (non-null): refresh the badge cache. A transient null
   // never changes it — same rule as the cloud-mode demotion below.
   if (ent) {
-    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, renderProBadge);
+    chrome.storage.local.set({ pb_is_pro: ent.is_pro === true, pb_plan: ent.plan || null }, function () {
+      renderProBadge();
+      refreshSyncFallbackVariant();
+    });
   }
   radio.disabled = !allowed;
   wrapper.style.opacity = allowed ? '1' : '0.5';

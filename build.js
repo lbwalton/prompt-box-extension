@@ -3,12 +3,14 @@ const path = require('path');
 
 // Files to include in the Chrome extension package
 const filesToInclude = [
-  'Manifest.json',
+  'manifest.json',
   'background.js',
+  'content.js',
   'popup.html',
   'popup.js',
   'sync-config.js',
   'sync-auth.js',
+  'sync-engine.js',
   'icon16.png',
   'icon48.png',
   'icon128.png'

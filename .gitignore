@@ -54,3 +54,6 @@ task.md
 
 # Superpowers tooling state (brainstorm sessions, sdd artifacts, etc.)
 .superpowers/
+
+# Supabase CLI local state (version cache, temp files)
+supabase/.temp/

@@ -52,7 +52,7 @@ Type the trigger. Blink. Done.
 ### ✨ Full Feature Set
 
 **Text Expansion**
-Assign short trigger keywords to any saved snippet. Type a shortcut and press Space, Tab, or Enter to expand it into your full prompt in any text field. On sites that block expansion, Prompt Box copies the prompt to your clipboard and shows a reminder so you can paste it in one keystroke. Works in the places you type most, including Gmail, ChatGPT, Claude, X, Google, Bing, Notion, and Slack.
+Assign short trigger keywords to any saved snippet. Type a shortcut and press Space, Tab, or Enter to expand it into your full prompt in any text field. On sites that block expansion, Prompt Box copies the prompt to your clipboard and shows a reminder so you can paste it in one keystroke. Because it works at the browser level, expansion runs in any text field on any site: AI chat tools, email, docs, search bars, and web forms alike.
 
 **Quick Save**
 Right-click any selected text on any webpage > "Save to Prompt Box." Capture a great AI prompt, a useful template, a code snippet — without breaking your flow.
@@ -118,7 +118,7 @@ Update, rename, retag, or delete anything at any time. Your library evolves as y
 
 **Executives & Operators**: expand standard replies, recurring meeting agendas, approval language, and status update formats. Reclaim hours every week.
 
-**Anyone using ChatGPT, Claude, Gemini, Perplexity, or other AI tools**: finally, a home for the prompts that actually work.
+**Anyone who works with AI chat tools daily**: finally, a home for the prompts that actually work.
 
 ---
 
